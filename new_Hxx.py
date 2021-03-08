@@ -6,10 +6,7 @@ import numpy as np
 import ROOT
 import uproot
 from rhalphalib import AffineMorphTemplate
-#import matplotlib.pyplot as plt
-#import mplhep as hep
-#plt.style.use(hep.style.ROOT)
-#plt.switch_backend('agg')
+from util import make_dirs
 
 rl.util.install_roofit_helpers()
 
@@ -309,7 +306,6 @@ def dummy_rhalphabet(pseudo, throwPoisson, MCTF, justZ=False,
         # # Plot it
         from rhalphalib.plot.plot_TF import TF_smooth_plot, TF_params
         from rhalphalib.plot.plot_TF import plotTF as plotMCTF
-        from utils import make_dirs
         _values = [par.value for par in tf_MCtempl.parameters.flatten()]
         _names = [par.name for par in tf_MCtempl.parameters.flatten()]
         np.save('{}/MCTF'.format(model_name), _values)
