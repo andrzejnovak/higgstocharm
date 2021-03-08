@@ -232,6 +232,9 @@ def dummy_rhalphabet(pseudo, throwPoisson, MCTF, justZ=False,
     if opts.model is not None:
         model_name = opts.model
 
+    # Prepare dir structure
+    make_dirs('{}/plots'.format(model_name))
+
     # Get QCD efficiency
     if MCTF:
         qcdmodel = rl.Model("qcdmodel")
@@ -296,7 +299,7 @@ def dummy_rhalphabet(pseudo, throwPoisson, MCTF, justZ=False,
                               ROOT.RooFit.PrintLevel(-1),
                               )
         qcdfit_ws.add(qcdfit)
-        qcdfit_ws.writeToFile('qcdfit.root')
+        qcdfit_ws.writeToFile('{}/qcdfit.root'.format(model_name))
         if qcdfit.status() != 0:
             qcdfit.Print()
             raise RuntimeError('Could not fit qcd')
@@ -309,7 +312,6 @@ def dummy_rhalphabet(pseudo, throwPoisson, MCTF, justZ=False,
         from utils import make_dirs
         _values = [par.value for par in tf_MCtempl.parameters.flatten()]
         _names = [par.name for par in tf_MCtempl.parameters.flatten()]
-        make_dirs('{}/plots'.format(model_name))
         np.save('{}/MCTF'.format(model_name), _values)
         print('ptdeg', degsMC[0], 'rhodeg', degsMC[1])
         plotMCTF(*TF_smooth_plot(*TF_params(_values, _names)), MC=True, raw=True,
