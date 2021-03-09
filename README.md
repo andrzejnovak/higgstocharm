@@ -69,15 +69,6 @@ python ../plotTF.py
 # python ../plot.py --MC --year 2017 -o plots_MC_t1
 ```
 
-
-### OTHER IMPORTANT COMMANDS
-```
-combineTool.py -M FitDiagnostics -m 125 -d model_combined.root --there --cminDefaultMinimizerStrategy 0 -t -1 --expectSignal 1
-combineTool.py -M AsymptoticLimits -m 125 -d model_combined.root --there -t -1 --expectSignal 1 --rMin=-50 --rMax=50
-
-combine -M FitDiagnostics -t -1 --expectSignal 0 -d tempModel_combined.root --rMin=-5 --rMax=10  --cminDefaultMinimizerStrategy 0 --robustFit=1
-```
-
 ### Running Impacts
 ```
 # Baseline
@@ -94,36 +85,4 @@ plotImpacts.py -i impacts.json -o plots/impacts_out --blind
 combineTool.py -M MultiDimFit -d model_combined.root --cminDefaultMinimizerStrategy 0 --expectSignal 1 --robustFit 1 --algo grid --points 40 --setParameterRanges r=-20,20 -m 125 -t -1 --toysFrequentist
 
 plot1DScan.py higgsCombine.Test.MultiDimFit.mH125.root -o plots/LScan_data_Zexp1 --y-max 30 --y-cut 30
-```
-
-### Running tests
-```
-
-```
-
-## Requirements
-Standalone model creation requires:
-  - Python 2.7+ or 3.6+
-  - `numpy >= 1.14`
-
-RooFit+combine rendering requires:
-  - `ROOT < 6.18` (i.e. LCG96 is too recent, CMSSW 8 combine cannot handle it.  LCG95a is fine)
-
-Use in combine requires, well, [combine](https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit).
-The CMSSW 10 (CC7) [recipe](https://cms-analysis.github.io/HiggsAnalysis-CombinedLimit/#cc7-release-cmssw_10_2_x-recommended-version)
-satisfies the requirements, however the CMSSW 8 recipe has a too old version of numpy.
-
-There is a python 3 compatible standalone fork of combine [available](https://github.com/guitargeek/combine).
-It is also possible to render the model folder using the quickstart recipe, and then move the folder or switch
-environments to a CMSSW+combine environment and proceed from there.
-
-
-#################################
-##############################
-### Shit that worked
-```
-# For Zcc, all systs
-combine -M FitDiagnostics --expectSignal 1 -d tempModel_combined.root --rMin=-1 --rMax=3  --cminDefaultMinimizerStrategy 0 --robustFit=1  -t -1 --toysFrequentist
-
-
 ```

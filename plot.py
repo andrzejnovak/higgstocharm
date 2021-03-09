@@ -2,6 +2,7 @@ from __future__ import print_function
 import argparse
 import os
 from collections import OrderedDict
+import json
 
 import uproot
 
@@ -77,6 +78,13 @@ parser.add_argument("--filled",
                     choices={True, False},
                     help="Use filled stack plots")
 
+parser.add_argument('-f',
+                    "--format",
+                    type=str,
+                    default='png',
+                    choices={'png', 'pdf'},
+                    help="Plot format")
+
 pseudo = parser.add_mutually_exclusive_group(required=True)
 pseudo.add_argument('--data', action='store_false', dest='pseudo')
 pseudo.add_argument('--MC', action='store_true', dest='pseudo')
@@ -144,6 +152,7 @@ def full_plot(
         toys=False,
         sqrtnerr=False,
         filled=False,
+        format=args.format,
 ):
 
     # Determine:
@@ -530,7 +539,7 @@ def full_plot(
     #            ) + _iptname
     name = str(lab_reg) + _iptname
 
-    fig.savefig('{}/{}.png'.format(args.output_folder, fittype + "_" + name),
+    fig.savefig('{}/{}.{}'.format(args.output_folder, fittype + "_" + name, format),
                 bbox_inches="tight")
 
 
@@ -667,21 +676,21 @@ if args.three_regions:
     plot_fractions(
         os.path.join(args.dir, 'fitDiagnostics.root'),
         os.path.join(args.dir, 'model_combined.root'),
-        out='{}/{}.png'.format(args.output_folder, 'fractions'),
+        out='{}/{}.{}'.format(args.output_folder, 'fractions', args.format),
         data=((not args.pseudo) | args.toys),
         year=args.year,
     )
 
 plot_cov(
     os.path.join(args.dir, 'fitDiagnostics.root'),
-    out='{}/{}.png'.format(args.output_folder, 'covariances'),
+    out='{}/{}.{}'.format(args.output_folder, 'covariances', args.format),
     data=((not args.pseudo) | args.toys),
     year=args.year,
 )
 
 plot_cov(
     os.path.join(args.dir, 'fitDiagnostics.root'),
-    out='{}/{}_wTF.png'.format(args.output_folder, 'covariances'),
+    out='{}/{}_wTF.{}'.format(args.output_folder, 'covariances', args.format),
     data=((not args.pseudo) | args.toys),
     year=args.year,
     include='tf',
