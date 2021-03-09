@@ -18,6 +18,7 @@ import mplhep as hep
 plt.style.use([hep.cms.style.ROOT, {'font.size': 24}])
 plt.switch_backend('agg')
 
+
 def str2bool(v):
     if isinstance(v, bool):
         return v
@@ -28,11 +29,9 @@ def str2bool(v):
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
+
 parser = argparse.ArgumentParser()
-parser.add_argument("-d",
-                    "--dir",
-                    default='',
-                    help="Model/Fit dir")
+parser.add_argument("-d", "--dir", default='', help="Model/Fit dir")
 parser.add_argument("-i",
                     "--input",
                     default='fitDiagnostics.root',
@@ -54,16 +53,16 @@ parser.add_argument("--all",
                     action='store_true',
                     dest='run_all',
                     help="Include split pT bin plots")
-parser.add_argument("--run2",
-                    action='store_true',
-                    dest='run2',
-                    help="Stack all years")
-parser.add_argument("-o", "--output-folder",
+parser.add_argument("--run2", action='store_true', dest='run2', help="Stack all years")
+parser.add_argument("-o",
+                    "--output-folder",
                     default='plots',
                     dest='output_folder',
                     help="Folder to store plots - will be created if it doesn't exist.")
 parser.add_argument("--year",
-                    default=2017,
+                    default=None,
+                    choices={"2016", "2017", "2018"},
+                    type=str,
                     help="year label")
 
 parser.add_argument("--scaleH",
@@ -78,16 +77,19 @@ parser.add_argument("--filled",
                     choices={True, False},
                     help="Use filled stack plots")
 
-
-
 pseudo = parser.add_mutually_exclusive_group(required=True)
 pseudo.add_argument('--data', action='store_false', dest='pseudo')
-pseudo.add_argument('--MC',   action='store_true', dest='pseudo')
+pseudo.add_argument('--MC', action='store_true', dest='pseudo')
 pseudo.add_argument('--toys', action='store_true', dest='toys')
 
 args = parser.parse_args()
 if args.output_folder.split("/")[0] != args.dir:
     args.output_folder = os.path.join(args.dir, args.output_folder)
+
+configs = json.load(open("config.json"))
+if args.year is None:
+    args.year = str(configs['year'])
+
 make_dirs(args.output_folder)
 
 cdict = {
@@ -101,7 +103,7 @@ cdict = {
     'qcd': 'gray',
     'tqq': 'plum',
     'stqq': 'lightblue',
-    'top' : 'gray',
+    'top': 'gray',
     # 'zbb': 'dodgerblue',
     # 'zcc': 'red',
     # 'zqq': 'turquoise',
@@ -131,15 +133,18 @@ label_dict = OrderedDict([
     ('hcc', "$\mathrm{H(c\\bar{c})}$"),
 ])
 
-mergedict = {
-    'top': ['stqq','tqq']
-}
+mergedict = {'top': ['stqq', 'tqq']}
 
-def full_plot(cats, pseudo=True, fittype="", mask=False,
-              toys=False, 
-              sqrtnerr=False,
-              filled=False,
-              ):
+
+def full_plot(
+        cats,
+        pseudo=True,
+        fittype="",
+        mask=False,
+        toys=False,
+        sqrtnerr=False,
+        filled=False,
+):
 
     # Determine:
     if "pass" in str(cats[0].name) or "fail" in str(cats[0].name):
@@ -155,6 +160,7 @@ def full_plot(cats, pseudo=True, fittype="", mask=False,
     class Ugh():
         def __init__(self):
             self.plot_bins = None
+
     ugh = Ugh()
 
     def tgasym_to_err(tgasym):
@@ -188,14 +194,8 @@ def full_plot(cats, pseudo=True, fittype="", mask=False,
         x = np.array(x)[ugh.plot_bins]
         y = np.array(y)[ugh.plot_bins]
 
-        yerr = [
-            np.array(yerr[0])[ugh.plot_bins],
-            np.array(yerr[1])[ugh.plot_bins]
-        ]
-        xerr = [
-            np.array(xerr)[0][ugh.plot_bins],
-            np.array(xerr)[1][ugh.plot_bins]
-        ]
+        yerr = [np.array(yerr[0])[ugh.plot_bins], np.array(yerr[1])[ugh.plot_bins]]
+        xerr = [np.array(xerr)[0][ugh.plot_bins], np.array(xerr)[1][ugh.plot_bins]]
 
         if mask and not pseudo:
             _y = y
@@ -206,13 +206,7 @@ def full_plot(cats, pseudo=True, fittype="", mask=False,
 
         _d_label = "MC" if pseudo else "Data"
         if toys: _d_label = "Toys"
-        ax.errorbar(x,
-                    y,
-                    yerr,
-                    xerr,
-                    fmt='+',
-                    label=_d_label,
-                    **data_err_opts)
+        ax.errorbar(x, y, yerr, xerr, fmt='+', label=_d_label, **data_err_opts)
 
     def th1_to_step(th1, restoreNorm=True):
         _h, _bins = th1.numpy()
@@ -222,7 +216,7 @@ def full_plot(cats, pseudo=True, fittype="", mask=False,
 
     def th1_to_err(th1, restoreNorm=True):
         _h, _bins = th1.numpy()
-        _x = _bins[:-1] + np.diff(_bins)/2
+        _x = _bins[:-1] + np.diff(_bins) / 2
         _xerr = [abs(_bins[:-1] - _x), _bins[1:] - _x]
         _var = th1.variances
         if restoreNorm:
@@ -230,7 +224,6 @@ def full_plot(cats, pseudo=True, fittype="", mask=False,
             _var = _var * np.diff(_bins)
 
         return _x, _h, _var, [_xerr[0], _xerr[1]]
-
 
     def plot_step(bins, h, ax=None, label=None, nozeros=True, **kwargs):
         ax.step(bins, h, where='post', label=label, c=cdict[label], lw=2, **kwargs)
@@ -242,8 +235,7 @@ def full_plot(cats, pseudo=True, fittype="", mask=False,
             kwargs['color'] = cdict[label]
         else:
             kwargs['edgecolor'] = cdict[label]
-        ax.fill_between(bins, h, h0,
-                        step='post', label=label, **kwargs)
+        ax.fill_between(bins, h, h0, step='post', label=label, **kwargs)
 
     def from_cats(fcn, name):
         out = []
@@ -257,7 +249,7 @@ def full_plot(cats, pseudo=True, fittype="", mask=False,
                     out.append(fcn(cat[_name]))
                 except:
                     print('Missing', _name)
-        return np.array(out) 
+        return np.array(out)
 
     # Sample proofing
     by_cat_samples = []
@@ -269,7 +261,8 @@ def full_plot(cats, pseudo=True, fittype="", mask=False,
         by_cat_samples.append(cat_samples)
 
     # Plotting
-    fig, (ax, rax) = plt.subplots(2, 1,
+    fig, (ax, rax) = plt.subplots(2,
+                                  1,
                                   gridspec_kw={'height_ratios': (3, 1)},
                                   sharex=True)
     plt.subplots_adjust(hspace=0)
@@ -307,7 +300,13 @@ def full_plot(cats, pseudo=True, fittype="", mask=False,
     for mc in ['top', 'wcq', 'wqq']:
         res = from_cats(th1_to_step, mc)
         bins, h = res[:, 0][0], np.sum(np.nan_to_num(res[:, 1], 0), axis=0)
-        plot_filled(bins, h + tot_h, h0=tot_h, ax=ax, label=mc, facecolor='white', hatch='///')
+        plot_filled(bins,
+                    h + tot_h,
+                    h0=tot_h,
+                    ax=ax,
+                    label=mc,
+                    facecolor='white',
+                    hatch='///')
         tot_h += h
 
     # Stack plots
@@ -340,9 +339,7 @@ def full_plot(cats, pseudo=True, fittype="", mask=False,
         for mc in ['hcc']:
             res = from_cats(th1_to_step, mc)
             bins, h = res[:, 0][0], np.sum(res[:, 1], axis=0)
-            plot_step(bins, h * 500, ax=ax, label=mc,
-                      linestyle='--')
-
+            plot_step(bins, h * 500, ax=ax, label=mc, linestyle='--')
 
     #######
     # Ratio plot
@@ -371,7 +368,7 @@ def full_plot(cats, pseudo=True, fittype="", mask=False,
         y -= h[:-1]
 
     y /= _yerr
-    _scale_for_mc = np.r_[_yerr,  _yerr[-1]]
+    _scale_for_mc = np.r_[_yerr, _yerr[-1]]
 
     def prop_err(A, B, C, a, b, c):
         # Error propagation for (Data - Bkg)/Sigma_{Data} plot
@@ -381,9 +378,9 @@ def full_plot(cats, pseudo=True, fittype="", mask=False,
         return e
 
     # Error propagation, not sensitive to args[-1]
-    err = prop_err(_y, _y-y, np.sqrt(_y), np.sqrt(_y), np.sqrt(_y-y), 1)
+    err = prop_err(_y, _y - y, np.sqrt(_y), np.sqrt(_y), np.sqrt(_y - y), 1)
 
-    plot_data(_x, y, yerr=[err, err], xerr=_xerr, ax=rax, ugh=ugh,  zorder=10)
+    plot_data(_x, y, yerr=[err, err], xerr=_xerr, ax=rax, ugh=ugh, zorder=10)
 
     # Stack plots
     tot_h, bins = None, None
@@ -403,9 +400,12 @@ def full_plot(cats, pseudo=True, fittype="", mask=False,
             tot_h = h
         else:
             if args.filled:
-                plot_filled(bins, (h + tot_h)/_scale_for_mc, tot_h/_scale_for_mc, ax=rax, label=mc)
+                plot_filled(bins, (h + tot_h) / _scale_for_mc,
+                            tot_h / _scale_for_mc,
+                            ax=rax,
+                            label=mc)
             else:
-                plot_step(bins, (h + tot_h)/_scale_for_mc, label=mc, ax=rax)
+                plot_step(bins, (h + tot_h) / _scale_for_mc, label=mc, ax=rax)
             tot_h += h
 
     # Separate scaled signal
@@ -413,9 +413,7 @@ def full_plot(cats, pseudo=True, fittype="", mask=False,
         for mc in ['hcc']:
             res = from_cats(th1_to_step, mc)
             bins, h = res[:, 0][0], np.sum(res[:, 1], axis=0)
-            plot_step(bins, 500 * h / _scale_for_mc, ax=rax, label=mc,
-                      linestyle='--')
-
+            plot_step(bins, 500 * h / _scale_for_mc, ax=rax, label=mc, linestyle='--')
 
     ############
     # Style
@@ -436,13 +434,17 @@ def full_plot(cats, pseudo=True, fittype="", mask=False,
     else:
         lumi_t = "jet"
     if args.run2:
-        ax = hep.cms.cmslabel(ax=ax, data=((not pseudo) | toys), year='', 
-                          lumi=np.sum([float(v) for k, v in lumi['jet'].items()]),
-                          fontsize=22)
+        ax = hep.cms.cmslabel(ax=ax,
+                              data=((not pseudo) | toys),
+                              year='',
+                              lumi=np.sum([float(v) for k, v in lumi['jet'].items()]),
+                              fontsize=22)
     else:
-        ax = hep.cms.cmslabel(ax=ax, data=((not pseudo) | toys), year=args.year, 
-                          lumi=lumi[lumi_t][str(args.year)],
-                          fontsize=22)
+        ax = hep.cms.cmslabel(ax=ax,
+                              data=((not pseudo) | toys),
+                              year=args.year,
+                              lumi=lumi[lumi_t][str(args.year)],
+                              fontsize=22)
     ax.legend(ncol=2)
 
     ax.set_ylabel('Events / 7GeV', ha='right', y=1)
@@ -456,24 +458,22 @@ def full_plot(cats, pseudo=True, fittype="", mask=False,
     # ax.ticklabel_format(axis='y', style='sci', scilimits=(0,3), useOffset=False)
     # ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.e'))
     f = mtick.ScalarFormatter(useOffset=False, useMathText=True)
+
     # g = lambda x, pos: "${}$".format(f._formatSciNotation('%1.10e' % x))
 
     def g(x, pos):
         return "${}$".format(f._formatSciNotation('%1.10e' % x))
+
     ax.yaxis.set_major_formatter(mtick.FuncFormatter(g))
     rax.set_ylim(rax.get_ylim()[0] * 1.3, rax.get_ylim()[1] * 1.3)
 
-    ipt = int(str(cats[0].name
-                  ).split('ptbin')[1][0]) if b'ptbin' in cats[0].name else 0
+    ipt = int(str(cats[0].name).split('ptbin')[1][0]) if b'ptbin' in cats[0].name else 0
     if len(cats) == 1:
-        pt_range = str(pbins[ipt]) + "$< \mathrm{p_T} <$" + str(
-            pbins[ipt + 1]) + " GeV"
+        pt_range = str(pbins[ipt]) + "$< \mathrm{p_T} <$" + str(pbins[ipt + 1]) + " GeV"
     else:
-        pt_range = str(pbins[0]) + "$< \mathrm{p_T} <$" + str(
-            pbins[-1]) + " GeV"
+        pt_range = str(pbins[0]) + "$< \mathrm{p_T} <$" + str(pbins[-1]) + " GeV"
     if b'muon' in cats[0].name:
-        pt_range = str(pbins[0]) + "$< \mathrm{p_T} <$" + str(
-            pbins[-1]) + " GeV"
+        pt_range = str(pbins[0]) + "$< \mathrm{p_T} <$" + str(pbins[-1]) + " GeV"
 
     lab_mu = ", MuonCR" if b'muon' in cats[0].name else ""
     if regs == "pf":
@@ -513,7 +513,7 @@ def full_plot(cats, pseudo=True, fittype="", mask=False,
     sorted_handles_labels = hep.plot.sort_legend(ax, label_dict)
     # Insert dummy to uneven legend to align right
     if len(sorted_handles_labels[0]) % 2 != 0:
-        _insert_ix = len(sorted_handles_labels[0])/2
+        _insert_ix = len(sorted_handles_labels[0]) / 2
         sorted_handles_labels[0].insert(
             _insert_ix, plt.Line2D([], [], linestyle='none', marker=None))
         sorted_handles_labels[1].insert(_insert_ix, '')
@@ -535,7 +535,7 @@ def full_plot(cats, pseudo=True, fittype="", mask=False,
 
 
 if args.fit is None:
-    shape_types = ['prefit', 'fit_s']    
+    shape_types = ['prefit', 'fit_s']
 else:
     shape_types = [args.fit]
 if args.three_regions:
@@ -543,33 +543,58 @@ if args.three_regions:
 else:
     regions = ['pass', 'fail']
 
-
 # f = uproot.open(os.path.join(args.dir, args.input))
 f = uproot.open(args.input)
 for shape_type in shape_types:
     pbins = [450, 500, 550, 600, 675, 800, 1200]
     for region in regions:
         print("Plotting {} region".format(region), shape_type)
-        mask = (args.mask & (region == "pass")) | (args.mask & (region == "pcc"))  | (args.mask & (region == "pbb"))
+        mask = (args.mask &
+                (region == "pass")) | (args.mask &
+                                       (region == "pcc")) | (args.mask &
+                                                             (region == "pbb"))
         for i in range(0, 6):
             if not args.run_all: continue
-            cat_name = 'shapes_{}/ptbin{}{}{};1'.format(shape_type, i, region, args.year)
+            cat_name = 'shapes_{}/ptbin{}{}{};1'.format(shape_type, i, region,
+                                                        args.year)
             try:
                 cat = f[cat_name]
             except Exception:
                 raise ValueError("Namespace {} is not available, only following"
                                  "namespaces were found in the file: {}".format(
-                                    args.fit, f.keys()))
+                                     args.fit, f.keys()))
 
-            fig = full_plot([cat], pseudo=args.pseudo, fittype=shape_type, mask=mask, toys=args.toys, sqrtnerr=True)
+            fig = full_plot([cat],
+                            pseudo=args.pseudo,
+                            fittype=shape_type,
+                            mask=mask,
+                            toys=args.toys,
+                            sqrtnerr=True)
 
         if args.run2:
-            cat_list = [f['shapes_{}/ptbin{}{}{};1'.format(shape_type, i, region, '2016')] for i in range(0, 6)]
-            cat_list += [f['shapes_{}/ptbin{}{}{};1'.format(shape_type, i, region, '2017')] for i in range(0, 6)]
-            cat_list += [f['shapes_{}/ptbin{}{}{};1'.format(shape_type, i, region, '2018')] for i in range(0, 6)]
+            cat_list = [
+                f['shapes_{}/ptbin{}{}{};1'.format(shape_type, i, region, '2016')]
+                for i in range(0, 6)
+            ]
+            cat_list += [
+                f['shapes_{}/ptbin{}{}{};1'.format(shape_type, i, region, '2017')]
+                for i in range(0, 6)
+            ]
+            cat_list += [
+                f['shapes_{}/ptbin{}{}{};1'.format(shape_type, i, region, '2018')]
+                for i in range(0, 6)
+            ]
         else:
-            cat_list = [f['shapes_{}/ptbin{}{}{};1'.format(shape_type, i, region, args.year)] for i in range(0, 6)]
-        full_plot(cat_list, pseudo=args.pseudo, fittype=shape_type, mask=mask, toys=args.toys, sqrtnerr=True)
+            cat_list = [
+                f['shapes_{}/ptbin{}{}{};1'.format(shape_type, i, region, args.year)]
+                for i in range(0, 6)
+            ]
+        full_plot(cat_list,
+                  pseudo=args.pseudo,
+                  fittype=shape_type,
+                  mask=mask,
+                  toys=args.toys,
+                  sqrtnerr=True)
 
         # MuonCR if included
         # FIXME
@@ -583,59 +608,81 @@ for shape_type in shape_types:
 
 ##### Input shape plotter
 # Take sqrt N err for data
-# Mock QCD while unavailable as template in rhalpha 
+# Mock QCD while unavailable as template in rhalpha
 import os
 from rhalphalib.plot.input_shapes import input_dict_maker
 
-mockd = input_dict_maker(os.getcwd()+".pkl")
-print(mockd)
+try:
+    mockd = input_dict_maker(os.getcwd() + ".pkl")
 
-# try:
-mockd = input_dict_maker(os.getcwd()+".pkl")
-print(mockd)
+    input_pseudo = True
+    if args.toys or not args.pseudo:
+        input_pseudo = False
+    for shape_type in ["inputs"]:
+        pbins = [450, 500, 550, 600, 675, 800, 1200]
+        for region in regions:
+            print("Plotting inputs", region)
+            _mask = not input_pseudo
+            mask = (_mask &
+                    (region == "pass")) | (_mask &
+                                           (region == "pcc")) | (_mask &
+                                                                 (region == "pbb"))
+            full_plot([
+                mockd['ptbin{}{}{}_{}'.format(i, region, args.year, shape_type)]
+                for i in range(0, 6)
+            ],
+                      pseudo=input_pseudo,
+                      fittype=shape_type,
+                      mask=mask,
+                      sqrtnerr=True,
+                      toys=False)
+            # Per bin plots
+            for i in range(0, 6):
+                if not args.run_all: continue
+                full_plot(
+                    [mockd['ptbin{}{}{}_{}'.format(i, region, args.year, shape_type)]],
+                    pseudo=input_pseudo,
+                    fittype=shape_type,
+                    mask=mask,
+                    sqrtnerr=True,
+                    toys=False)
 
-input_pseudo = True
-if args.toys or not args.pseudo:
-    input_pseudo = False
-for shape_type in ["inputs"]:
-    pbins = [450, 500, 550, 600, 675, 800, 1200]
-    for region in regions:
-        print("Plotting inputs", region)
-        _mask = not input_pseudo
-        mask = (_mask & (region == "pass")) | (_mask & (region == "pcc"))  | (_mask & (region == "pbb"))
-        full_plot([mockd['ptbin{}{}{}_{}'.format(i, region, args.year, shape_type)] for i in range(0, 6)],
-                pseudo=input_pseudo, fittype=shape_type, mask=mask, sqrtnerr=True, toys=False)
-        # Per bin plots
-        for i in range(0, 6):
-            if not args.run_all: continue
-            full_plot([mockd['ptbin{}{}{}_{}'.format(i, region, args.year, shape_type)]],
-                pseudo=input_pseudo, fittype=shape_type, mask=mask, sqrtnerr=True, toys=False)
-
-        # MuonCR if included
-        try:
-            cat = mockd['muonCR{}_{}'.format(region, shape_type)]
-            full_plot([cat], fittype=shape_type,
-                    pseudo=input_pseudo, mask=False, sqrtnerr=True, toys=False)
-            print("Plotted input, muCR", region, shape_type)
-        except Exception:
-            print("Muon region not found")
-            pass
-# except:
-#     print("Input pkl file not found")
+            # MuonCR if included
+            try:
+                cat = mockd['muonCR{}_{}'.format(region, shape_type)]
+                full_plot([cat],
+                          fittype=shape_type,
+                          pseudo=input_pseudo,
+                          mask=False,
+                          sqrtnerr=True,
+                          toys=False)
+                print("Plotted input, muCR", region, shape_type)
+            except Exception:
+                print("Muon region not found")
+                pass
+except:
+    print("Input pkl file not found")
 
 if args.three_regions:
-    plot_fractions(os.path.join(args.dir, 'fitDiagnostics.root'),
-                   os.path.join(args.dir, 'model_combined.root'),
-                   out='{}/{}.png'.format(args.output_folder, 'fractions'),
-                   data=((not args.pseudo) | args.toys), year=args.year,
+    plot_fractions(
+        os.path.join(args.dir, 'fitDiagnostics.root'),
+        os.path.join(args.dir, 'model_combined.root'),
+        out='{}/{}.png'.format(args.output_folder, 'fractions'),
+        data=((not args.pseudo) | args.toys),
+        year=args.year,
     )
 
-plot_cov(os.path.join(args.dir, 'fitDiagnostics.root'),
-         out='{}/{}.png'.format(args.output_folder, 'covariances'),
-         data=((not args.pseudo) | args.toys), year=args.year,
-         )
+plot_cov(
+    os.path.join(args.dir, 'fitDiagnostics.root'),
+    out='{}/{}.png'.format(args.output_folder, 'covariances'),
+    data=((not args.pseudo) | args.toys),
+    year=args.year,
+)
 
-plot_cov(os.path.join(args.dir, 'fitDiagnostics.root'),
-         out='{}/{}_wTF.png'.format(args.output_folder, 'covariances'),
-         data=((not args.pseudo) | args.toys), year=args.year, include='tf',
-         )
+plot_cov(
+    os.path.join(args.dir, 'fitDiagnostics.root'),
+    out='{}/{}_wTF.png'.format(args.output_folder, 'covariances'),
+    data=((not args.pseudo) | args.toys),
+    year=args.year,
+    include='tf',
+)
