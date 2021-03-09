@@ -2,29 +2,7 @@
 
 ![Ralph](https://upload.wikimedia.org/wikipedia/en/thumb/1/14/Ralph_Wiggum.png/220px-Ralph_Wiggum.png)
 
-## CMSSW+Combine Quickstart
-```bash
-export SCRAM_ARCH=slc7_amd64_gcc700
-cmsrel CMSSW_10_2_13
-cd CMSSW_10_2_13/src
-cmsenv
-git clone https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit
-scram b
-pip install --user https://github.com/nsmith-/rhalphalib/archive/master.zip
-```
-Take a look at [test_rhalphalib.py](https://github.com/nsmith-/rhalphalib/blob/master/tests/test_rhalphalib.py)
-for examples of how to use the package.
-
-## Standalone Quickstart
-```bash
-# check your platform: CC7 shown below, for SL6 it would be "x86_64-slc6-gcc8-opt"
-source /cvmfs/sft.cern.ch/lcg/views/LCG_96python3/x86_64-centos7-gcc8-opt/setup.sh  # or .csh, etc.
-pip install --user https://github.com/nsmith-/rhalphalib/archive/master.zip
-```
-Take a look at [test_rhalphalib.py](https://github.com/nsmith-/rhalphalib/blob/master/tests/test_rhalphalib.py)
-for examples of how to use the package.
-
-### Hcc
+## Install
 Following the [recipe](https://cms-analysis.github.io/HiggsAnalysis-CombinedLimit/#cc7-release-cmssw_10_2_x-recommended-version) from combine. and clone to CMSSW environment.
 ```
 export SCRAM_ARCH=slc7_amd64_gcc700
@@ -42,7 +20,7 @@ cd $CMSSW_BASE/src/
 git clone https://github.com/cms-analysis/CombineHarvester.git CombineHarvester
 scram b -j8
 ```
-Then get the workspace maker
+Then install rhalphalib
 
 ```
 cmsenv
@@ -50,16 +28,29 @@ cd $CMSSW_BASE/src/
 git clone git@github.com:andrzejnovak/rhalphalib.git
 cd rhalphalib
 git fetch
-git checkout origin/hxxdev
+git checkout origin/newhcc
 # Need to update some packages against the ones in CMSSW (might need a few more)
 pip install uproot --user --upgrade
 pip install matplotlib --user --upgrade
 pip install mplhep --user
-# Run
-python temp_Hxx.py # Must chose --data or --MC, other options get printed
+# Install rhalphalib 
+pip install --user -e .
+```
 
-# Go to tempModel/
-cmsenv
+and finally clone and run higgstocharm
+
+```
+git clone https://github.com/andrzejnovak/higgstocharm.git
+cd higgstocharm
+
+# Must chose --data or --MC, other options get printed
+python new_Hxx.py --data --unblind --year 2017 --templates n2nano/templates_nskim17_CC.root -o Test17
+```
+
+## Fitting
+
+### Building workspace commands
+```
 bash build.sh
 # text2workspace.py -P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel  --PO verbose --PO 'map=.*/*hcc*:r[1,-500,500]' --PO 'map=.*/zcc:z[1,-5,5]' model_combined.txt
 # text2workspace.py -P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel  --PO verbose --PO 'map=.*/*hcc*:r[1,-500,500]' model_combined.txt
@@ -72,16 +63,10 @@ combineTool.py -M AsymptoticLimits -m 125 -d model_combined.root --there --expec
 python ../HiggsAnalysis/CombinedLimit/test/diffNuisances.py tempModel/fitDiagnostics.root 
 
 
-```
-## To extract shapes/norms use combine harvester and make plots
-```
-PostFitShapesFromWorkspace -w model_combined.root -o shapes.root --print --postfit --sampling -f fitDiagnostics.root:fit_s
-# If withing the model dir
 python ../plot.py --data 
 python ../plotTF.py
 
-###
-python ../plot.py --MC --year 2017 -o plots_MC_t1
+# python ../plot.py --MC --year 2017 -o plots_MC_t1
 ```
 
 
