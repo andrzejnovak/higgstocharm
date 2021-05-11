@@ -44,7 +44,8 @@ git clone https://github.com/andrzejnovak/higgstocharm.git
 cd higgstocharm
 
 # Must chose --data or --MC, other options get printed
-python new_Hxx.py --data --unblind --year 2017 --templates n2nano/templates_nskim17_CC.root -o Test17
+# python new_Hxx.py --data --unblind --year 2017 --templates n2nano/templates_nskim17_CC.root -o Test17
+python new_Hxx.py --data --unblind --year 2017 -t tau/templates_new17_CC.root -o Test17 --degs 0,0 --fast 1
 ```
 
 ## Fitting
@@ -52,14 +53,14 @@ python new_Hxx.py --data --unblind --year 2017 --templates n2nano/templates_nski
 ### Building workspace commands
 ```
 bash build.sh
-# text2workspace.py -P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel  --PO verbose --PO 'map=.*/*hcc*:r[1,-500,500]' --PO 'map=.*/zcc:z[1,-5,5]' model_combined.txt
+text2workspace.py -P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel  --PO verbose --PO 'map=.*/*hcc*:r[1,-500,500]' --PO 'map=.*/zcc:z[1,-5,5]' model_combined.txt
 # text2workspace.py -P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel  --PO verbose --PO 'map=.*/*hcc*:r[1,-500,500]' model_combined.txt
 # text2workspace.py -P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel  --PO verbose --PO 'map=.*/zcc:r[1,-5,5]' model_combined.txt
 
 combine -M FitDiagnostics --expectSignal 1 -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 -t -1 --toysFrequentist 
 combine -M FitDiagnostics --expectSignal 1 -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 --saveShapes --saveWithUncertainties -t -1 --toysFrequentist 
-combine -M Significance model_combined.root --expectSignal 1  -t -1 --toysFrequentist
-combineTool.py -M AsymptoticLimits -m 125 -d model_combined.root --there --expectSignal 1 -t -1 --toysFrequentist
+combine -M Significance model_combined.root --expectSignal 1 --redefineSignalPOIs z -t -1 --toysFrequentist
+combineTool.py -M AsymptoticLimits -m 125 -d model_combined.root --expectSignal 1 --redefineSignalPOIs r -t -1 --toysFrequentist
 python ../HiggsAnalysis/CombinedLimit/test/diffNuisances.py tempModel/fitDiagnostics.root 
 
 
@@ -70,15 +71,54 @@ python ../plotTF.py
 ```
 
 ### Running Impacts
+Fitting Z
 ```
 # Baseline
 combineTool.py -M Impacts -d model_combined.root -m 125 --doInitialFit --robustFit 1 --setParameterRanges r=-1,5 --cminDefaultMinimizerStrategy 0 --X-rtd FITTER_DYN_STEP --expectSignal 1 -t -1 --toysFrequentist 
 # Condor
-combineTool.py -M Impacts -d model_combined.root -m 125 --doFits --robustFit 1 --allPars --setParameterRanges r=-1,5  -t -1 --toysFrequentist --expectSignal 1 --cminDefaultMinimizerStrategy 0 --X-rtd MINIMIZER_analytic --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHccFit --exclude 'rgx{qcdparams*}'
+combineTool.py -M Impacts -d model_combined.root -m 125 --doFits --robustFit 1 --allPars --setParameterRanges r=-1,5  -t -1 --toysFrequentist --expectSignal 1 --cminDefaultMinimizerStrategy 0 --X-rtd MINIMIZER_analytic --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHccZ --exclude 'rgx{qcdparams*}'
 # Collect
-combineTool.py -M Impacts -d model_combined.root -m 125 --allPars -o impacts.json
-plotImpacts.py -i impacts.json -o plots/impacts_out --blind
+combineTool.py -M Impacts -d model_combined.root -o impacts.json
+plotImpacts.py -i impacts.json -o plots/impacts_out_Z --blind
 ```
+
+Fitting H
+```
+# Baseline
+combineTool.py -M Impacts -d model_combined.root -m 125 --doInitialFit --robustFit 1 --setParameterRanges r=-500,500 --cminDefaultMinimizerStrategy 0 --X-rtd FITTER_DYN_STEP --expectSignal 40 -t -1 --toysFrequentist 
+# Condor
+combineTool.py -M Impacts -d model_combined.root -m 125 --doFits --robustFit 1 --allPars --setParameterRanges r=-500,500  -t -1 --toysFrequentist --expectSignal 40 --cminDefaultMinimizerStrategy 0 --X-rtd MINIMIZER_analytic --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHccH --exclude 'rgx{qcdparams*}'
+# Collect
+combineTool.py -M Impacts -m 125 -d model_combined.root -o impacts.json
+plotImpacts.py -i impacts.json -o plots/impacts_out_H --blind
+```
+
+
+### Running bias tests
+Ensure signal min/max are sufficiently large
+```
+export BIAS=bias0
+combineTool.py -M FitDiagnostics --expectSignal 0 -n $BIAS -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 -t 25 -s 1:40:1  --toysFrequentist --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHcc$BIAS
+export BIAS=bias1
+combineTool.py -M FitDiagnostics --expectSignal 1 -n $BIAS -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 -t 25 -s 1:40:1  --toysFrequentist --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHcc$BIAS
+export BIAS=bias5
+combineTool.py -M FitDiagnostics --expectSignal 5 -n $BIAS -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 -t 25 -s 1:40:1  --toysFrequentist --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHcc$BIAS
+export BIAS=bias10
+combineTool.py -M FitDiagnostics --expectSignal 10 -n $BIAS -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 -t 25 -s 1:40:1  --toysFrequentist --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHcc$BIAS
+export BIAS=bias50
+combineTool.py -M FitDiagnostics --expectSignal 50 -n $BIAS -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 -t 25 -s 1:40:1  --toysFrequentist --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHcc$BIAS
+export BIAS=bias100
+combineTool.py -M FitDiagnostics --expectSignal 100 -n $BIAS -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 -t 25 -s 1:40:1  --toysFrequentist --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHcc$BIAS
+```
+```
+for BIAS in bias0 bias1 bias5 bias10 bias50 bias100
+    do 
+    hadd  $BIAS.root *Combine$BIAS.*
+    done
+
+```
+
+
 
 ### Running likelihood scan
 ```

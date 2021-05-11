@@ -109,12 +109,18 @@ def passfailSF(f, region, sName, ptbin, mask, SF=1, SF_unc=0.1, muon=False):
 
 def shape_to_num(f, region, sName, ptbin, syst, mask, muon=False):
     _nom = get_templ(f, region, sName, ptbin, muon=muon)
+    if _nom is None:
+        return None
     _nom_rate = np.sum(_nom[0] * mask)
     if _nom_rate < .1:
         return 1.0
     _up = get_templ(f, region, sName, ptbin, syst=syst + "Up", muon=muon)
+    if _up is None:
+        return None
     _up_rate = np.sum(_up[0] * mask)
     _down = get_templ(f, region, sName, ptbin, syst=syst + "Down", muon=muon)
+    if _down is None:
+        return None
     _down_rate = np.sum(_down[0] * mask)
     _diff = np.abs(_up_rate - _nom_rate) + np.abs(_down_rate - _nom_rate)
     return 1.0 + _diff / (2. * _nom_rate)
@@ -126,22 +132,39 @@ def get_templ(f, region, sample, ptbin, syst=None, muon=False):
         hist_name += "_" + syst
     else:
         hist_name += "_nominal"
-    if muon:
-        h_vals = f[hist_name].values
-        h_edges = f[hist_name].edges
-        h_variances = f[hist_name].variances
-    else:
-        h_vals = f[hist_name + "_bin{}".format(ptbin)].values
-        h_edges = f[hist_name + "_bin{}".format(ptbin)].edges
-        h_variances = f[hist_name + "_bin{}".format(ptbin)].variances
+    if not muon:
+        hist_name += "_bin{}".format(ptbin)
+    try:
+        f[hist_name]
+    except:
+        print("Sample {}, {}, {}, {} not found.".format(
+            sample, region, ptbin, syst))
+        return None
+    h_vals = f[hist_name].values
+    h_edges = f[hist_name].edges
+    h_variances = f[hist_name].variances
     if np.any(h_vals < 0):
-        print("Sample {}, {}, {} has negative bins. They will be set to 0.".format(
-            sample, region, ptbin))
+        print("Sample {}, {}, {}, {}, has negative bins. They will be set to 0.".format(
+            sample, region, ptbin, syst))
         _invalid = h_vals < 0
         h_vals[_invalid] = 0
         h_variances[_invalid] = 0
     h_key = 'msd'
     return (h_vals, h_edges, h_key, h_variances)
+
+
+def one_bin(template):
+    N = 5
+    try:
+        h_vals, h_edges, h_key, h_variances = template
+        return (np.array([np.sum(h_vals)]), np.array([0., 1.]), "onebin", np.array([np.sum(h_variances)]))
+        # return (np.array([np.sum(h_vals)]), np.array([h_edges[0], h_edges[-1]]), h_key, np.array([np.sum(h_variances)]))
+        # return (h_vals[:-N], h_edges[:-N], "new", h_variances[:-N])
+    except:
+        h_vals, h_edges, h_key = template
+        return (np.array([np.sum(h_vals)]), np.array([0., 1.]), "onebin")
+        # return (np.array([np.sum(h_vals)]), np.array([h_edges[0], h_edges[-1]]), h_key)
+        # return (h_vals[:-N], h_edges[:-N], "new")
 
 
 def dummy_rhalphabet(pseudo,
@@ -162,26 +185,26 @@ def dummy_rhalphabet(pseudo,
     # Default lumi (needs at least one systematics for prefit)
     sys_lumi = rl.NuisanceParameter('CMS_lumi', 'lnN')
     # TT params
-    tqqeffSF = rl.IndependentParameter('tqqeffSF', 1., 0, 10)
-    tqqnormSF = rl.IndependentParameter('tqqnormSF', 1., 0, 10)
+    tqqeffSF = rl.IndependentParameter('tqqeffSF_{}'.format(year), 1., 0, 10)
+    tqqnormSF = rl.IndependentParameter('tqqnormSF_{}'.format(year), 1., 0, 10)
     # Systematics
-    if opts.fast:
-        sys_JES = rl.NuisanceParameter('CMS_scale_j_{}'.format(year), 'lnN')
-        sys_JER = rl.NuisanceParameter('CMS_res_j_{}'.format(year), 'lnN')
-        sys_UES = rl.NuisanceParameter('CMS_ues_j_{}'.format(year), 'lnN')
-        sys_trigger = rl.NuisanceParameter('CMS_gghcc_trigger_{}'.format(year), 'lnN')
-        sys_beff = rl.NuisanceParameter('CMS_gghcc_btagEffStat_{}'.format(year), 'lnN')
-        sys_bweight = rl.NuisanceParameter('CMS_gghcc_btagWeight_{}'.format(year),
-                                           'lnN')
+    sys_shape_dict = {}
+    if opts.fast == 0:
+        sys_shape_dict['JES'] = rl.NuisanceParameter('CMS_scale_j_{}'.format(year), 'lnN')
+        sys_shape_dict['JER'] = rl.NuisanceParameter('CMS_res_j_{}'.format(year), 'lnN')
+        sys_shape_dict['UES'] = rl.NuisanceParameter('CMS_ues_j_{}'.format(year), 'lnN')
+        sys_shape_dict['jet_trigger'] = rl.NuisanceParameter('CMS_gghcc_trigger_{}'.format(year), 'lnN')
+        sys_shape_dict['pileup_weight'] = rl.NuisanceParameter('CMS_gghcc_PU_{}'.format(year), 'lnN')
+        for sys in ['btagEffStat', 'btagWeight', 'd1kappa_EW', 'Z_d2kappa_EW', 'Z_d3kappa_EW', 'd1K_NLO', 'd2K_NLO', 'd3K_NLO']:
+            sys_shape_dict[sys] = rl.NuisanceParameter('CMS_gghcc_{}_{}'.format(sys, year), 'lnN')
     else:
-        sys_JES = rl.NuisanceParameter('CMS_scale_j_{}'.format(year), 'shape')
-        sys_JER = rl.NuisanceParameter('CMS_res_j_{}'.format(year), 'shape')
-        sys_UES = rl.NuisanceParameter('CMS_ues_j_{}'.format(year), 'shape')
-        sys_trigger = rl.NuisanceParameter('CMS_gghcc_trigger_{}'.format(year), 'shape')
-        sys_beff = rl.NuisanceParameter('CMS_gghcc_btagEffStat_{}'.format(year),
-                                        'shape')
-        sys_bweight = rl.NuisanceParameter('CMS_gghcc_btagWeight_{}'.format(year),
-                                           'shape')
+        sys_shape_dict['JES'] = rl.NuisanceParameter('CMS_scale_j_{}'.format(year), 'shape')
+        sys_shape_dict['JER'] = rl.NuisanceParameter('CMS_res_j_{}'.format(year), 'shape')
+        sys_shape_dict['UES'] = rl.NuisanceParameter('CMS_ues_j_{}'.format(year), 'shape')
+        sys_shape_dict['jet_trigger'] = rl.NuisanceParameter('CMS_gghcc_trigger_{}'.format(year), 'shape')
+        sys_shape_dict['pileup_weight'] = rl.NuisanceParameter('CMS_gghcc_PU_{}'.format(year), 'shape')
+        for sys in ['btagEffStat', 'btagWeight', 'd1kappa_EW', 'Z_d2kappa_EW', 'Z_d3kappa_EW', 'd1K_NLO', 'd2K_NLO', 'd3K_NLO']:
+            sys_shape_dict[sys] = rl.NuisanceParameter('CMS_gghcc_{}_{}'.format(sys, year), 'shape')
 
     sys_ddxeff = rl.NuisanceParameter('CMS_eff_cc_{}'.format(year), 'lnN')
     sys_ddxeffbb = rl.NuisanceParameter('CMS_eff_bb_{}'.format(year), 'lnN')
@@ -270,7 +293,7 @@ def dummy_rhalphabet(pseudo,
         degsMC = tuple([int(s) for s in opts.degsMC.split(',')])
         tf_MCtempl = rl.BernsteinPoly("tf{}_MCtempl".format(year),
                                       degsMC, ['pt', 'rho'],
-                                      limits=(-50, 50))
+                                      limits=(-50, 50), coefficient_transform=None)
         tf_MCtempl_params = qcdeff * tf_MCtempl(ptscaled, rhoscaled)
 
         for ptbin in range(npt):
@@ -340,6 +363,9 @@ def dummy_rhalphabet(pseudo,
 
     # build actual fit model now
     model = rl.Model("shapes" + year)
+    if not justZ:
+        model.t2w_config = ("-P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel  --PO verbose "
+                            "--PO 'map=.*/*hcc*:r[1,-500,500]' --PO 'map=.*/zcc:z[1,-5,5]'")
 
     for ptbin in range(npt):
         for region in ['pass', 'fail']:
@@ -352,24 +378,11 @@ def dummy_rhalphabet(pseudo,
                 include_samples = ['zcc', "hcc"]
             else:
                 include_samples = [
-                    'zbb',
-                    'zcc',
-                    'zqq',
-                    'wcq',
-                    'wqq',
-                    'tqq',
-                    'stqq',
-                    'vvqq',
-                    'hcc',
-                    'vbfhcc',
-                    'whcc',
-                    'zhcc',
-                    'hbb',
-                    'vbfhbb',
-                    'whbb',
-                    'zhbb',
-                    'tthbb',
-                    #'zhbb', 'vbfhbb', 'whbb', 'tthbb',  # hbb signals
+                    'zbb', 'zcc', 'zqq',
+                    'wcq', 'wqq',
+                    'tqq', 'stqq', 'vvqq', 'zll', 'wln',
+                    'hcc', 'vbfhcc', 'whcc', 'zhcc',
+                    'hbb', 'vbfhbb', 'whbb', 'zhbb', # hbb signals
                 ]
             # Remove unavailable samples
             _available = sorted(
@@ -387,13 +400,18 @@ def dummy_rhalphabet(pseudo,
             # Define mask
             mask = validbins[ptbin].copy()
             if not pseudo and region == 'pass':
-                if blind and 'hbb' in include_samples:
+                if blind:
+                    mask[4:7] = False
                     mask[10:14] = False
             # Remove empty samples
             for sName in include_samples:
                 templ = get_templ(f, region, sName, ptbin)
-                # if np.sum(templ[0][mask]) < 0.00001 or np.sum([templ[0][mask] > 0]) <= 1:
-                if np.sum(templ[0][mask]) < 0.00001:
+                if templ is None:
+                    print(
+                        'Sample {} in region = {}, ptbin = {}, not found in template file.'
+                        .format(sName, region, ptbin))
+                    include_samples.remove(sName)
+                elif np.sum(templ[0][mask]) < 0.0000001:
                     print(
                         'Sample {} in region = {}, ptbin = {}, would be empty, so it will be removed'
                         .format(sName, region, ptbin))
@@ -403,13 +421,20 @@ def dummy_rhalphabet(pseudo,
                 include_samples.append('qcd')
             for sName in include_samples:
                 templ = get_templ(f, region, sName, ptbin)
-                if runhiggs:
-                    _signals = ["hcc"]
-                elif runboth:
-                    _signals = ["hcc", "zcc"]
+                # if runhiggs:
+                #     _signals = ["hcc"]
+                # elif runboth:
+                #     _signals = ["hcc", "zcc"]
+                if opts.runbb:
+                    _signals = ["zbb"]
+                    raise NotImplementedError
                 else:
-                    _signals = ["zcc"]
-                stype = rl.Sample.SIGNAL if sName in _signals else rl.Sample.BACKGROUND
+                    if sName == "zcc":
+                        stype = 0
+                    elif "hcc" in sName:
+                        stype = -1
+                    else:
+                        stype = rl.Sample.BACKGROUND
 
                 sample = rl.TemplateSample(ch.name + '_' + sName, stype, templ)
 
@@ -422,36 +447,36 @@ def dummy_rhalphabet(pseudo,
                     if sName in ["qcd"]:
                         continue
 
-                    sample.setParamEffect(sys_lumi, 1.023)
                     sys_names = [
-                        'JES', 'JER', 'UES', 'jet_trigger', 'btagEffStat', 'btagWeight'
+                        'JES', 'JER', 'UES', 'jet_trigger', 'btagEffStat', 'btagWeight', 'pileup_weight',
+                        'Z_d2kappa_EW', 'Z_d3kappa_EW', 'd1kappa_EW', 'd1K_NLO', 'd2K_NLO', 'd3K_NLO'
                     ]
-                    sys_list = [
-                        sys_JES, sys_JER, sys_UES, sys_trigger, sys_beff, sys_bweight
-                    ]
-                    try:
-                        for sys_name, sys in zip(sys_names, sys_list):
-                            if opts.fast:  # Convert to lnN for faster fitting
-                                _sys_ef = shape_to_num(f, region, sName, ptbin,
-                                                       sys_name, mask)
-                                sample.setParamEffect(sys, _sys_ef)
-                            else:
-                                _up = get_templ(f,
-                                                region,
-                                                sName,
-                                                ptbin,
-                                                syst=sys_name + "Up")
-                                _dn = get_templ(f,
-                                                region,
-                                                sName,
-                                                ptbin,
-                                                syst=sys_name + "Down")
-                                sample.setParamEffect(sys, _up[0], _dn[0])
-                    except:
-                        pass
+                    for sys_name in sys_names:
+                        if (("NLO" in sys_name) or ("EW" in sys_name)) and not sName in ['zbb', 'zcc', 'zqq', 'wcq', 'wqq']:
+                            continue
+                        if opts.fast == 0:  # Convert to lnN for faster fitting
+                            _sys_ef = shape_to_num(f, region, sName, ptbin,
+                                                    sys_name, mask)
+                            if _sys_ef is None:
+                                continue
+                            sample.setParamEffect(sys_shape_dict[sys_name], _sys_ef)
+                        else:
+                            _up = get_templ(f,
+                                            region,
+                                            sName,
+                                            ptbin,
+                                            syst=sys_name + "Up")
+                            _dn = get_templ(f,
+                                            region,
+                                            sName,
+                                            ptbin,
+                                            syst=sys_name + "Down")
+                            if _up is None or _dn is None:
+                                continue
+                            sample.setParamEffect(sys_shape_dict[sys_name], _up[0], _dn[0])
 
                     if opts.mcstat and sName not in ['qcd']:
-                        if opts.fast:  # Convert to lnN for faster fitting
+                        if opts.fast < 2:  # Convert to lnN for faster fitting
                             sample.autoMCStats(lnN=True)
                         else:
                             sample.autoMCStats(epsilon=1e-4)
@@ -459,8 +484,7 @@ def dummy_rhalphabet(pseudo,
                     # Sample specific
                         sample.setParamEffect(sys_eleveto, 1.005)
                         sample.setParamEffect(sys_muveto, 1.005)
-                        sample.setParamEffect(sys_lumi, 1.025)
-                        sample.setParamEffect(sys_trigger, 1.02)
+                        # sample.setParamEffect(sys_trigger, 1.02)
                     if sName not in ['tqq', 'stqq']:
                         sample.scale(SF[year]['V_SF'])
                         sample.setParamEffect(
@@ -478,26 +502,26 @@ def dummy_rhalphabet(pseudo,
                         sample.setParamEffect(sys_ddxeffbb, _sfunc)
                     if sName in ["wcq", "wqq"]:
                         _sf, _sfunc = passfailSF(f, region, sName, ptbin, mask,
-                                                 SF[year]['W_SF'], SF[year]['W_SF_ERR'])
+                                                        SF[year]['W_SF'], SF[year]['W_SF_ERR'])
                         sample.scale(_sf)
                         sample.setParamEffect(sys_ddxeffw, _sfunc)
 
-                    if sName.startswith("z"):
-                        sample.setParamEffect(sys_znormQ, 1.1)
-                        if ptbin >= 2:
-                            sample.setParamEffect(sys_znormEW, 1.07)
-                        else:
-                            sample.setParamEffect(sys_znormEW, 1.05)
-                    if sName.startswith("w"):
-                        sample.setParamEffect(sys_znormQ, 1.1)
-                        if ptbin >= 2:
-                            sample.setParamEffect(sys_znormEW, 1.07)
-                        else:
-                            sample.setParamEffect(sys_znormEW, 1.05)
-                        if ptbin >= 3:
-                            sample.setParamEffect(sys_wznormEW, 1.06)
-                        else:
-                            sample.setParamEffect(sys_wznormEW, 1.02)
+                    # if sName.startswith("z"):
+                    #     sample.setParamEffect(sys_znormQ, 1.1)
+                    #     if ptbin >= 2:
+                    #         sample.setParamEffect(sys_znormEW, 1.07)
+                    #     else:
+                    #         sample.setParamEffect(sys_znormEW, 1.05)
+                    # if sName.startswith("w"):
+                    #     sample.setParamEffect(sys_znormQ, 1.1)
+                    #     if ptbin >= 2:
+                    #         sample.setParamEffect(sys_znormEW, 1.07)
+                    #     else:
+                    #         sample.setParamEffect(sys_znormEW, 1.05)
+                    #     if ptbin >= 3:
+                    #         sample.setParamEffect(sys_wznormEW, 1.06)
+                    #     else:
+                    #         sample.setParamEffect(sys_wznormEW, 1.02)
                     if sName.startswith("h"):
                         sample.setParamEffect(sys_Hpt, 1.2)
 
@@ -516,7 +540,19 @@ def dummy_rhalphabet(pseudo,
                     else:
                         pass
                     realshift = _mass * SF[year]['shift_SF'] * SF[year]['shift_SF_ERR']
-                    # realshift = 90 * 0.01
+
+                    def badtemp(hvalues, eps=0.0000001, mask=mask):
+                        # Need minimum size & more than 1 non-zero bins
+                        tot = np.sum(hvalues[mask])
+                        count_nonzeros = np.sum(hvalues[mask] > 0)
+                        if (tot < eps) or (count_nonzeros < 2):
+                            return True
+                        else:
+                            return False
+
+                    if badtemp(mtempl.get(shift=7.)[0]) or badtemp(mtempl.get(shift=-7.)[0]):
+                        print("Skipping sample {}, scale systematic would be empty".format(sName))
+                        continue
                     sample.setParamEffect(sys_scale,
                                           mtempl.get(shift=7.),
                                           mtempl.get(shift=-7.),
@@ -568,9 +604,13 @@ def dummy_rhalphabet(pseudo,
 
     if fitTF:
         degs = tuple([int(s) for s in opts.degs.split(',')])
+        if opts.transform:
+            _transform = np.exp
+        else:
+            _transform = None
         tf_dataResidual = rl.BernsteinPoly("tf{}_dataResidual".format(year),
                                            degs, ['pt', 'rho'],
-                                           limits=(0, 50))
+                                           limits=(0, 50), coefficient_transform=_transform)
         tf_dataResidual_params = tf_dataResidual(ptscaled, rhoscaled)
         if MCTF:
             tf_params = qcdeff * tf_MCtempl_params_final * tf_dataResidual_params
@@ -613,88 +653,123 @@ def dummy_rhalphabet(pseudo,
             passCh = model['ptbin{}pass{}'.format(ptbin, year)]
             tqqpass = passCh['tqq']
             tqqfail = failCh['tqq']
-            tqqPF = tqqpass.getExpectation(nominal=True).sum() \
-                / tqqfail.getExpectation(nominal=True).sum()
+            stqqpass = passCh['stqq']
+            stqqfail = failCh['stqq']
+            sumPass = tqqpass.getExpectation(nominal=True).sum()
+            sumFail = tqqfail.getExpectation(nominal=True).sum()
+            sumPass += stqqpass.getExpectation(nominal=True).sum()
+            sumFail += stqqfail.getExpectation(nominal=True).sum()
+            tqqPF =  sumPass / sumFail
             tqqpass.setParamEffect(tqqeffSF, 1 * tqqeffSF)
             tqqfail.setParamEffect(tqqeffSF, (1 - tqqeffSF) * tqqPF + 1)
             tqqpass.setParamEffect(tqqnormSF, 1 * tqqnormSF)
             tqqfail.setParamEffect(tqqnormSF, 1 * tqqnormSF)
+            stqqpass.setParamEffect(tqqeffSF, 1 * tqqeffSF)
+            stqqfail.setParamEffect(tqqeffSF, (1 - tqqeffSF) * tqqPF + 1)
+            stqqpass.setParamEffect(tqqnormSF, 1 * tqqnormSF)
+            stqqfail.setParamEffect(tqqnormSF, 1 * tqqnormSF)
 
     # Fill in muon CR
+    collapse = True
     if muonCR:
         for region in ['pass', 'fail']:
-            ch = rl.Channel("muonCR%s" % (region, ))
+            ch = rl.Channel("muonCR{}{}".format(region, year))
             model.addChannel(ch)
-            #include_samples = ["qcd", "tqq", 'stqq', 'vvqq', 'zll', 'wlnu', 'wqq', 'zqq']
+            #include_samples = ["qcd", "tqq", 'stqq', 'vvqq', 'zll', 'wln', 'wqq', 'zqq']
             include_samples = [
                 "qcd",
                 "tqq",
-                'wqq',
-                'zqq',
+                "stqq",
+                "vvqq",
+                'zll',
+                'wln',
             ]
 
             for sName in include_samples:
 
                 templ = get_templ(f_mu, region, sName, ptbin, muon=True)
-                print(templ)
+                if collapse:
+                    templ = one_bin(templ)
                 stype = rl.Sample.BACKGROUND
                 sample = rl.TemplateSample(ch.name + '_' + sName, stype, templ)
 
-                sample.setParamEffect(sys_lumi, 1.023)
+                if not systs:  # Need at least one
+                    sample.setParamEffect(sys_lumi, 1.023)
+                else:
+                    sample.setParamEffect(sys_lumi, 1.023)
+                    if sName in ["qcd"]:
+                        continue
 
-                if systs:
-                    # sys_names = ['JES', "JER", 'Pu']
-                    # sys_list = [sys_JES, sys_JER, sys_Pu]
-                    # for sys_name, sys in zip(sys_names, sys_list):
-                    #     _sys_ef = shape_to_num(f_mu, region, sName, ptbin, sys_name, mask, muon=True)
-                    #     sample.setParamEffect(sys, _sys_ef)
+                    sys_names = [
+                        'JES', 'JER', 'UES', 'jet_trigger', 'btagEffStat', 'btagWeight', 'pileup_weight',
+                        'Z_d2kappa_EW', 'Z_d3kappa_EW', 'd1kappa_EW', 'd1K_NLO', 'd2K_NLO', 'd3K_NLO'
+                    ]
+                    for sys_name in sys_names:
+                        if (("NLO" in sys_name) or ("EW" in sys_name)) and not sName in ['zbb', 'zcc', 'zqq', 'wcq', 'wqq']:
+                            continue
+                        if opts.fast == 0:  # Convert to lnN for faster fitting
+                            _sys_ef = shape_to_num(f, region, sName, ptbin,
+                                                    sys_name, mask, muon=True)
+                            if _sys_ef is None:
+                                continue
+                            sample.setParamEffect(sys_shape_dict[sys_name], _sys_ef)
+                        else:
+                            _up = get_templ(f,
+                                            region,
+                                            sName,
+                                            ptbin,
+                                            muon=True,
+                                            syst=sys_name + "Up")
+                            _dn = get_templ(f,
+                                            region,
+                                            sName,
+                                            ptbin,
+                                            muon=True,
+                                            syst=sys_name + "Down")
+                            if _up is None or _dn is None:
+                                pass
+                            else:
+                                sample.setParamEffect(sys_shape_dict[sys_name], _up[0], _dn[0])
 
-                    if opts.mcstat and sName not in ['qcd', 'tqq']:
-                        sys_mc[sName] = rl.NuisanceParameter(
-                            'mcstat{}_{}_cat{}{}'.format(year, sName, ptbin, region),
-                            'lnN')
-                        _mcstat_eff = mcstat_to_numX(f_mu,
-                                                     region,
-                                                     sName,
-                                                     ptbin,
-                                                     mask,
-                                                     muon=True)
-                        sample.setParamEffect(sys_mc[sName], _mcstat_eff)
+                    if opts.mcstat and sName not in ['qcd']:
+                        if opts.fast < 2:  # Convert to lnN for faster fitting
+                            sample.autoMCStats(lnN=True)
+                        else:
+                            sample.autoMCStats(epsilon=1e-4)
 
                     # Sample specific
                     if sName not in ["qcd"]:
                         sample.setParamEffect(sys_eleveto, 1.005)
                         sample.setParamEffect(sys_muveto, 1.005)
                         sample.setParamEffect(sys_lumi, 1.025)
-                        sample.setParamEffect(sys_trigger, 1.02)
-                    if sName not in ["qcd", 'tqq', 'stqq', 'zll', 'wlnu']:
+                        # sample.setParamEffect(sys_trigger, 1.02)
+                    if sName not in ["qcd", 'tqq', 'stqq', 'zll', 'wln']:
                         sample.scale(SF[year]['V_SF'])
                         sample.setParamEffect(
                             sys_veff, 1.0 + SF[year]['V_SF_ERR'] / SF[year]['V_SF'])
-                        #1.3)
-                    if sName.startswith("z"):
-                        sample.setParamEffect(sys_znormQ, 1.1)
-                        if ptbin >= 2:
-                            sample.setParamEffect(sys_znormEW, 1.07)
-                        else:
-                            sample.setParamEffect(sys_znormEW, 1.05)
-                    if sName.startswith("w"):
-                        sample.setParamEffect(sys_znormQ, 1.1)
-                        if ptbin >= 2:
-                            sample.setParamEffect(sys_znormEW, 1.07)
-                        else:
-                            sample.setParamEffect(sys_znormEW, 1.05)
-                        if ptbin >= 3:
-                            sample.setParamEffect(sys_wznormEW, 1.06)
-                        else:
-                            sample.setParamEffect(sys_wznormEW, 1.02)
+                    # if sName.startswith("z"):
+                    #     sample.setParamEffect(sys_znormQ, 1.1)
+                    #     if ptbin >= 2:
+                    #         sample.setParamEffect(sys_znormEW, 1.07)
+                    #     else:
+                    #         sample.setParamEffect(sys_znormEW, 1.05)
+                    # if sName.startswith("w"):
+                    #     sample.setParamEffect(sys_znormQ, 1.1)
+                    #     if ptbin >= 2:
+                    #         sample.setParamEffect(sys_znormEW, 1.07)
+                    #     else:
+                    #         sample.setParamEffect(sys_znormEW, 1.05)
+                    #     if ptbin >= 3:
+                    #         sample.setParamEffect(sys_wznormEW, 1.06)
+                    #     else:
+                    #         sample.setParamEffect(sys_wznormEW, 1.02)
                     if sName.startswith("h"):
                         sample.setParamEffect(sys_Hpt, 1.2)
 
                 ch.addSample(sample)
 
             if not pseudo:
-                data_obs = get_templ(f_mu, region, 'data_obs', ptbin, muon=True)
+                data_obs = get_templ(f_mu, region, 'data_obs', ptbin, muon=True)[:-1]
                 if ptbin == 0 and region == "pass":
                     print("Reading real data")
 
@@ -710,18 +785,29 @@ def dummy_rhalphabet(pseudo,
                     yields = np.random.poisson(yields)
                 data_obs = (yields, msd.binning, msd.name)
 
+            if collapse:
+                data_obs = one_bin(data_obs)
             _nbinsmu = len(data_obs[0])
 
             ch.setObservation(data_obs)
 
-        tqqpass = model['muonCRpass_tqq']
-        tqqfail = model['muonCRfail_tqq']
-        tqqPF = tqqpass.getExpectation(nominal=True).sum() / tqqfail.getExpectation(
-            nominal=True).sum()
+        tqqpass = model['muonCRpass{}_tqq'.format(year)]
+        tqqfail = model['muonCRfail{}_tqq'.format(year)]
+        stqqpass = model['muonCRpass{}_stqq'.format(year)]
+        stqqfail = model['muonCRfail{}_stqq'.format(year)]
+        sumPass = tqqpass.getExpectation(nominal=True).sum()
+        sumFail = tqqfail.getExpectation(nominal=True).sum()
+        sumPass += stqqpass.getExpectation(nominal=True).sum()
+        sumFail += stqqfail.getExpectation(nominal=True).sum()
+        tqqPF = sumPass / sumFail
         tqqpass.setParamEffect(tqqeffSF, 1 * tqqeffSF)
         tqqfail.setParamEffect(tqqeffSF, (1 - tqqeffSF) * tqqPF + 1)
         tqqpass.setParamEffect(tqqnormSF, 1 * tqqnormSF)
         tqqfail.setParamEffect(tqqnormSF, 1 * tqqnormSF)
+        stqqpass.setParamEffect(tqqeffSF, 1 * tqqeffSF)
+        stqqfail.setParamEffect(tqqeffSF, (1 - tqqeffSF) * tqqPF + 1)
+        stqqpass.setParamEffect(tqqnormSF, 1 * tqqnormSF)
+        stqqfail.setParamEffect(tqqnormSF, 1 * tqqnormSF)
 
     with open("{}.pkl".format(model_name), "wb") as fout:
         pickle.dump(model, fout)
@@ -774,9 +860,9 @@ if __name__ == '__main__':
                         choices={True, False},
                         help="Fit QCD in MC first")
 
-    parser.add_argument("--muCR",
+    parser.add_argument("--muCR", "--muonCR",
                         type=str2bool,
-                        default='False',
+                        default='True',
                         choices={True, False},
                         help="Include muonCR to constrain ttbar")
 
@@ -798,12 +884,14 @@ if __name__ == '__main__':
                         choices={True, False},
                         help="Include all systematics (separate from scale/smear)")
 
-    parser.add_argument(
-        "--fast",
-        type=str2bool,
-        default='True',
-        choices={True, False},
-        help="Collapse shape and autoMCstats into lnN uncertainties for faster fits")
+    parser.add_argument("--fast",
+        type=int,
+        default=0,
+        choices=[0, 1, 2],
+        help="0: Convert all shapes and mcstat to lnN (except scale/smear)"
+             "1: Convert only mcstat shapes"
+             "2: Don't convert anything"
+        )
 
     parser.add_argument("--justZ",
                         type=str2bool,
@@ -832,9 +920,9 @@ if __name__ == '__main__':
                         choices={True, False},
                         help="Include mcstat unc")
 
-    parser.add_argument("--templates", type=str, default=None, help="Primary templates")
+    parser.add_argument("-t", "--templates", "--t", type=str, dest='templates', default=None, required=True, help="Primary templates")
 
-    parser.add_argument("--mutemplates", type=str, default=None, help="Muon templates")
+    parser.add_argument("--mutemplates", "--mut", type=str, default=None, help="Muon templates")
 
     parser.add_argument('-o', "--model", type=str, default=None, help="Model directory")
 
@@ -851,6 +939,9 @@ if __name__ == '__main__':
                         action='store_true',
                         dest='runboth',
                         help="Both Z and H signals")
+    parser.add_argument('--bb', action='store_true', dest='runbb')
+
+    parser.add_argument('--transform', action='store_true', dest='transform')
 
     parser.add_argument(
         '--mockQCD',
@@ -871,6 +962,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
     print("Running with options:")
     print("    ", args)
+    if args.mutemplates is None:
+        args.mutemplates = args.templates.replace("templates_", "templatesmuCR_")
 
     dummy_rhalphabet(pseudo=args.pseudo,
                      throwPoisson=args.throwPoisson,

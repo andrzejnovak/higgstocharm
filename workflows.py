@@ -6,6 +6,7 @@ ROOT.gStyle.SetOptStat(0)
 
 import sys
 import re
+import json
 # sys.path.append('/afs/desy.de/user/a/albrechs/xxl/af-cms/UHH2/10_2_17/CMSSW_10_2_17/src/UHH2/JetMass/python')
 # import cms_style
 # cms_style.extra_text="Preliminary Simulation"
@@ -372,16 +373,25 @@ class CombineWorkflows:
         parsed_args = self.parser[0]
         command_string = "#FTest\n"
         print("MODELDIR", self.modeldir)
-        if (not debug):
-            os.chdir(self.modeldir + '/bkgtests')
-        command_string += exec_bash("mkdir " + self.modeldir + '/bkgtests', debug)
+
+        # Fetch right configs
+        dir_base = os.path.dirname(os.path.realpath(self.workspace))
+        dir_alt = os.path.dirname(os.path.realpath(self.altmodel))
+        configs_base = json.load(open(os.path.join(dir_base, "config.json")))
+        configs_alt = json.load(open(os.path.join(dir_alt, "config.json")))
+        degs_base = "-".join(configs_base['degs'].split(","))
+        degs_alt = "-".join(configs_alt['degs'].split(","))
+        workdir = 'bkgtest_{}_{}'.format(degs_base, degs_alt)
+        command_string += exec_bash("mkdir " + os.path.join(self.modeldir, workdir), debug)
         if not parsed_args.collect:
-            command_string += exec_bash("rm " + self.modeldir + '/bkgtests/*', debug)
+            command_string += exec_bash("rm " + os.path.join(self.modeldir, workdir) + '/*', debug)
+        if (not debug):
+            os.chdir(os.path.join(self.modeldir, workdir))
 
         GOF_extra = self.extraOptions + (" --fixedSignalStrength 1 "
                                          if "r" in self._freezeParameters else "")
 
-        CONDOR_str = """ --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name "base{}" """ if parsed_args.condor else ""
+        CONDOR_str = """ --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name "job{}" """ if parsed_args.condor else ""
         if not parsed_args.collect:
             # Ref Fit (base)
             command_string += exec_bash(
@@ -444,7 +454,7 @@ class CombineWorkflows:
                             TOYSOPTIONS=self.toysOptions,
                             ALGO=self.algo,
                             EXTRA=GOF_extra)
-                    + CONDOR_str.format(sid),
+                    + CONDOR_str.format(self.workspace.split("/")[-2] + "BASE"+str(sid) + workdir),
                     debug)
 
         if not parsed_args.condor or parsed_args.collect:
@@ -496,7 +506,7 @@ class CombineWorkflows:
                             TOYSOPTIONS=self.toysOptions,
                             ALGO=self.algo,
                             EXTRA=GOF_extra)
-                    + CONDOR_str.format(sid),
+                    + CONDOR_str.format(self.workspace.split("/")[-2] + "ALT" + str(sid) + workdir),
                     debug)
 
         if not parsed_args.condor or parsed_args.collect:                  

@@ -90,13 +90,16 @@ pseudo.add_argument('--data', action='store_false', dest='pseudo')
 pseudo.add_argument('--MC', action='store_true', dest='pseudo')
 pseudo.add_argument('--toys', action='store_true', dest='toys')
 
+parser.add_argument('--inputonly', action='store_true', dest='inputonly')
+
 args = parser.parse_args()
 if args.output_folder.split("/")[0] != args.dir:
     args.output_folder = os.path.join(args.dir, args.output_folder)
 
-configs = json.load(open("config.json"))
-if args.year is None:
-    args.year = str(configs['year'])
+if not args.run2:
+    configs = json.load(open("config.json"))
+    if args.year is None:
+        args.year = str(configs['year'])
 
 make_dirs(args.output_folder)
 
@@ -104,21 +107,18 @@ cdict = {
     'hqq': '#6479B9',
     'hbb': '#6479B9',
     'hcc': '#EE2F36',
-    # 'wqq': 'lightgreen',
-    # 'wcq': 'green',
     'wqq': '#6CAE75',
     'wcq': '#007A7A',
     'qcd': 'gray',
     'tqq': 'plum',
     'stqq': 'lightblue',
     'top': 'gray',
-    # 'zbb': 'dodgerblue',
-    # 'zcc': 'red',
-    # 'zqq': 'turquoise',
+    'vlep': '#DEC1FF',
     'zbb': '#2C497F',
     'zcc': '#A4243B',
     'zqq': '#E09F3E',
-    'vvqq': 'magenta',
+    # 'vvqq': '#DEC1FF',
+    'vvqq': '#C5C9A4'
 }
 
 # Sequence of tuples because python2 is stupid
@@ -131,17 +131,23 @@ label_dict = OrderedDict([
     ('zbb', "$\mathrm{Z(b\\bar{b})}$"),
     ('zcc', "$\mathrm{Z(c\\bar{c})}$"),
     ('zqq', "$\mathrm{Z(q\\bar{q})}$"),
+    ('hcc', "$\mathrm{H(c\\bar{c})}$"),
     ('wcq', "$\mathrm{W(c\\bar{q})}$"),
     ('wqq', "$\mathrm{W(q\\bar{q})}$"),
-    ('vvqq', "$\mathrm{VV(q\\bar{q})}$"),
+    ('vvqq', "$\mathrm{VV}$"),
     ('top', "$\mathrm{Top}$"),
     ('tqq', "$\mathrm{t\\bar{t}}$"),
+    ('zll', "$\mathrm{DY}$"),
+    ('vlep', "$\mathrm{V(lep.)}$"),
     ('stqq', "$\mathrm{single-t}$"),
     ('qcd', "QCD"),
-    ('hcc', "$\mathrm{H(c\\bar{c})}$"),
 ])
 
-mergedict = {'top': ['stqq', 'tqq']}
+mergedict = {'top': ['stqq', 'tqq'],
+             'vlep': ['zll', 'wln'],
+             'hcc': ['hcc', 'vbfhcc', 'whcc', 'zhcc'],
+             'hbb': ['hbb', 'vbfhbb', 'whbb', 'zhbb', 'tthbb']
+}
 
 
 def full_plot(
@@ -253,11 +259,14 @@ def full_plot(
         else:
             samples = [name]
         for _name in samples:
+            _count_missing = 0
             for cat in cats:
                 try:
                     out.append(fcn(cat[_name]))
                 except:
-                    print('Missing', _name)
+                    _count_missing += 1
+            if _count_missing > 0:
+                print('Missing {} in {}/{} categories'.format(_name, _count_missing, len(cats)))
         return np.array(out)
 
     # Sample proofing
@@ -296,9 +305,12 @@ def full_plot(
         plot_data(_x, _h, yerr=[np.sqrt(_h), np.sqrt(_h)], xerr=_xerr, ax=ax, ugh=ugh)
 
     # Stack qcd/ttbar
-    tot_h, bins = None, None
+    tot_h = None
     for mc, zo in zip(['qcd'], [1]):
         res = from_cats(th1_to_step, mc)
+        if len(res) == 0:
+            tot_h = np.zeros(len(_x)+1)
+            continue
         bins, h = res[:, 0][0], np.sum(res[:, 1], axis=0)
         if tot_h is None:
             plot_step(bins, h, ax=ax, label=mc, zorder=zo)
@@ -306,8 +318,11 @@ def full_plot(
         else:
             plot_step(bins, h + tot_h, label=mc, ax=ax, zorder=zo)
             tot_h += h
-    for mc in ['top', 'wcq', 'wqq']:
+
+    for mc in ['vlep', 'top', 'vvqq', 'wcq', 'wqq']:
         res = from_cats(th1_to_step, mc)
+        if len(res) == 0:
+            continue
         bins, h = res[:, 0][0], np.sum(np.nan_to_num(res[:, 1], 0), axis=0)
         plot_filled(bins,
                     h + tot_h,
@@ -347,8 +362,10 @@ def full_plot(
     if args.scaleH:
         for mc in ['hcc']:
             res = from_cats(th1_to_step, mc)
+            if len(res) == 0:
+                continue
             bins, h = res[:, 0][0], np.sum(res[:, 1], axis=0)
-            plot_step(bins, h * 500, ax=ax, label=mc, linestyle='--')
+            plot_step(bins, h * 100, ax=ax, label=mc, linestyle='--')
 
     #######
     # Ratio plot
@@ -368,26 +385,22 @@ def full_plot(
         _yerr = np.sqrt(np.sum(res[:, 2], axis=0))
     # _yerr += 0.0000000001  # pad zeros
 
-    y = np.copy(_y)
-    for mc in ['qcd', 'top', 'vvqq', 'wcq', 'wqq', 'zbb', 'zqq', 'hbb']:
+    # y = np.copy(_y)
+    bkgs = np.zeros_like(_y)
+    for mc in ['qcd', 'top', 'vvqq', 'wcq', 'wqq', 'zbb', 'zqq', 'hbb', 'vlep']:
+        #res = from_cats(th1_to_step, mc)
         res = from_cats(th1_to_step, mc)
         if len(res) == 0:
             continue
         bins, h = res[:, 0][0], np.sum(res[:, 1], axis=0)
-        y -= h[:-1]
+        #y -= h[:-1]
+        bkgs += h[:-1]
+    y = _y - bkgs
 
+    err = np.sqrt(y + bkgs)/_yerr
+    # err = y/_yerr
     y /= _yerr
     _scale_for_mc = np.r_[_yerr, _yerr[-1]]
-
-    def prop_err(A, B, C, a, b, c):
-        # Error propagation for (Data - Bkg)/Sigma_{Data} plot
-        e = C**2 * (a**2 + b**2) + c**2 * (A - B)**2
-        e /= (C**4 + 0.0000000001)  # pad zeros
-        e = np.sqrt(e)
-        return e
-
-    # Error propagation, not sensitive to args[-1]
-    err = prop_err(_y, _y - y, np.sqrt(_y), np.sqrt(_y), np.sqrt(_y - y), 1)
 
     plot_data(_x, y, yerr=[err, err], xerr=_xerr, ax=rax, ugh=ugh, zorder=10)
 
@@ -400,6 +413,8 @@ def full_plot(
         stack_samples = ['hcc'] + stack_samples
     for mc in stack_samples:
         res = from_cats(th1_to_step, mc)
+        if len(res) == 0:
+            continue
         bins, h = res[:, 0][0], np.sum(res[:, 1], axis=0)
         if tot_h is None:
             if args.filled:
@@ -421,8 +436,10 @@ def full_plot(
     if args.scaleH:
         for mc in ['hcc']:
             res = from_cats(th1_to_step, mc)
+            if len(res) == 0:
+                continue
             bins, h = res[:, 0][0], np.sum(res[:, 1], axis=0)
-            plot_step(bins, 500 * h / _scale_for_mc, ax=rax, label=mc, linestyle='--')
+            plot_step(bins, 100 * h / _scale_for_mc, ax=rax, label=mc, linestyle='--')
 
     ############
     # Style
@@ -462,7 +479,12 @@ def full_plot(
         #r'$\mathrm{\frac{Data-(MultiJet+t\bar{t})}{\sigma_{Data}}}$')
         r'$\mathrm{\frac{Data-Bkg}{\sigma_{Data}}}$')
 
-    ax.set_xlim(40, 200)
+    if b'muon' in cats[0].name:
+        ax.set_xlim(0, 1)
+        rax.set_xticks([0, 1])
+        rax.set_xticklabels([40, 200])
+    else:
+        ax.set_xlim(40, 200)
     ax.set_ylim(0, ax.get_ylim()[1] * 1.4)
     # ax.ticklabel_format(axis='y', style='sci', scilimits=(0,3), useOffset=False)
     # ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.e'))
@@ -515,7 +537,7 @@ def full_plot(
 
     # Leg sort
     if args.scaleH:
-        label_dict['hcc'] = "$\mathrm{H(c\\bar{c})}$ x 500"
+        label_dict['hcc'] = "$\mathrm{H(c\\bar{c})}$ x 100"
         #label_dict['hqq'] = "$\mathrm{H(b\\bar{b})}$ x 500"
         #label_dict['hbb'] = "$\mathrm{H(b\\bar{b})}$ x 500"
 
@@ -556,6 +578,8 @@ else:
 f = uproot.open(args.input)
 for shape_type in shape_types:
     pbins = [450, 500, 550, 600, 675, 800, 1200]
+    if args.inputonly:
+        continue
     for region in regions:
         print("Plotting {} region".format(region), shape_type)
         mask = (args.mask &
@@ -606,14 +630,18 @@ for shape_type in shape_types:
                   sqrtnerr=True)
 
         # MuonCR if included
-        # FIXME
-        try:
-            cat = f['muonCR{}_{};1'.format(region, shape_type)]
-            full_plot([cat], args.pseudo, fittype=shape_type, toys=args.toys)
+        if any(['muonCR' in s for s in f['shapes_{}'.format(shape_type)].keys()]):
+            if args.run2:
+                cat_list = [f['shapes_{}/muonCR{}{};1'.format(shape_type, region, '2016')]]
+                cat_list += [f['shapes_{}/muonCR{}{};1'.format(shape_type, region, '2017')]]
+                cat_list += [f['shapes_{}/muonCR{}{};1'.format(shape_type, region, '2018')]]
+                full_plot(cat_list, args.pseudo, fittype=shape_type, toys=args.toys, sqrtnerr=True)
+            else:    
+                cat = f['shapes_{}/muonCR{}{};1'.format(shape_type, region, args.year)]
+                full_plot([cat], args.pseudo, fittype=shape_type, toys=args.toys, sqrtnerr=True)
             print("Plotted muCR", region, shape_type)
-        except Exception:
+        else:
             print("Muon region not found")
-            pass
 
 ##### Input shape plotter
 # Take sqrt N err for data
@@ -623,7 +651,6 @@ from rhalphalib.plot.input_shapes import input_dict_maker
 
 try:
     mockd = input_dict_maker(os.getcwd() + ".pkl")
-
     input_pseudo = True
     if args.toys or not args.pseudo:
         input_pseudo = False
@@ -634,17 +661,17 @@ try:
             _mask = not input_pseudo
             mask = (_mask &
                     (region == "pass")) | (_mask &
-                                           (region == "pcc")) | (_mask &
-                                                                 (region == "pbb"))
+                                            (region == "pcc")) | (_mask &
+                                                                    (region == "pbb"))
             full_plot([
                 mockd['ptbin{}{}{}_{}'.format(i, region, args.year, shape_type)]
                 for i in range(0, 6)
-            ],
-                      pseudo=input_pseudo,
-                      fittype=shape_type,
-                      mask=mask,
-                      sqrtnerr=True,
-                      toys=False)
+                        ],
+                        pseudo=input_pseudo,
+                        fittype=shape_type,
+                        mask=mask,
+                        sqrtnerr=True,
+                        toys=False)
             # Per bin plots
             for i in range(0, 6):
                 if not args.run_all: continue
@@ -658,13 +685,13 @@ try:
 
             # MuonCR if included
             try:
-                cat = mockd['muonCR{}_{}'.format(region, shape_type)]
+                cat = mockd['muonCR{}{}_{}'.format(region, args.year, shape_type)]
                 full_plot([cat],
-                          fittype=shape_type,
-                          pseudo=input_pseudo,
-                          mask=False,
-                          sqrtnerr=True,
-                          toys=False)
+                            fittype=shape_type,
+                            pseudo=input_pseudo,
+                            mask=False,
+                            sqrtnerr=True,
+                            toys=False)
                 print("Plotted input, muCR", region, shape_type)
             except Exception:
                 print("Muon region not found")
