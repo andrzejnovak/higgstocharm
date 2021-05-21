@@ -11,41 +11,6 @@ from util import make_dirs
 rl.util.install_roofit_helpers()
 
 # warnings.filterwarnings('error')
-
-# SF = {
-#     # https://github.com/kakwok/ZPrimePlusJet/blob/fidxs/fitting/PbbJet/buildRhalphabetHbb.py
-#     "2017": {
-#         'shift_SF': 0.978,
-#         'shift_SF_ERR': 0.012,
-#         'smear_SF': 0.9045,
-#         'smear_SF_ERR': 0.048,
-#         'V_SF': 0.924,
-#         'V_SF_ERR': 0.018,
-#         'CC_SF': 0.9,  # 1.0,
-#         'CC_SF_ERR': .3  # 0.3,  # prelim ddb SF
-#     },
-#     "2018": {
-#         'shift_SF': 0.970,
-#         'shift_SF_ERR': 0.012,
-#         'smear_SF': 0.9076,
-#         'smear_SF_ERR': 0.0146,
-#         'V_SF': 0.953,
-#         'V_SF_ERR': 0.016,
-#         'CC_SF': 0.9,  # 1.0,
-#         'CC_SF_ERR': .3  # 0.3,  # prelim ddb SF
-#     },
-#     "2016": {
-#         'V_SF': 0.993,
-#         'V_SF_ERR': 0.043,
-#         'shift_SF': 1.001,
-#         'shift_SF_ERR': 0.012,
-#         'smear_SF': 1.084,
-#         'smear_SF_ERR': 0.0905,
-#         'CC_SF': 0.9,  # 1.0,
-#         'CC_SF_ERR': .3  # 0.3,  # prelim ddb SF
-#     }
-# }
-
 SF = {
     "2017": {
         'V_SF': 0.897,
@@ -55,7 +20,7 @@ SF = {
         'smear_SF': 0.944,
         'smear_SF_ERR': 0.047,
         'W_SF': 0.668,
-        'W_SF_ERR': 0.133,
+        'W_SF_ERR': 0.133,        
         'CC_SF': 1,  # 1.0,
         'CC_SF_ERR': .3,  # 0.3,  # prelim ddb SF
     },
@@ -449,7 +414,7 @@ def dummy_rhalphabet(pseudo,
 
                     sys_names = [
                         'JES', 'JER', 'UES', 'jet_trigger', 'btagEffStat', 'btagWeight', 'pileup_weight',
-                        'Z_d2kappa_EW', 'Z_d3kappa_EW', 'd1kappa_EW', 'd1K_NLO', 'd2K_NLO', 'd3K_NLO'
+                        # 'Z_d2kappa_EW', 'Z_d3kappa_EW', 'd1kappa_EW', 'd1K_NLO', 'd2K_NLO', 'd3K_NLO'
                     ]
                     for sys_name in sys_names:
                         if (("NLO" in sys_name) or ("EW" in sys_name)) and not sName in ['zbb', 'zcc', 'zqq', 'wcq', 'wqq']:
@@ -506,22 +471,22 @@ def dummy_rhalphabet(pseudo,
                         sample.scale(_sf)
                         sample.setParamEffect(sys_ddxeffw, _sfunc)
 
-                    # if sName.startswith("z"):
-                    #     sample.setParamEffect(sys_znormQ, 1.1)
-                    #     if ptbin >= 2:
-                    #         sample.setParamEffect(sys_znormEW, 1.07)
-                    #     else:
-                    #         sample.setParamEffect(sys_znormEW, 1.05)
-                    # if sName.startswith("w"):
-                    #     sample.setParamEffect(sys_znormQ, 1.1)
-                    #     if ptbin >= 2:
-                    #         sample.setParamEffect(sys_znormEW, 1.07)
-                    #     else:
-                    #         sample.setParamEffect(sys_znormEW, 1.05)
-                    #     if ptbin >= 3:
-                    #         sample.setParamEffect(sys_wznormEW, 1.06)
-                    #     else:
-                    #         sample.setParamEffect(sys_wznormEW, 1.02)
+                    if sName.startswith("z"):
+                        sample.setParamEffect(sys_znormQ, 1.1)
+                        if ptbin >= 2:
+                            sample.setParamEffect(sys_znormEW, 1.07)
+                        else:
+                            sample.setParamEffect(sys_znormEW, 1.05)
+                    if sName.startswith("w"):
+                        sample.setParamEffect(sys_znormQ, 1.1)
+                        if ptbin >= 2:
+                            sample.setParamEffect(sys_znormEW, 1.07)
+                        else:
+                            sample.setParamEffect(sys_znormEW, 1.05)
+                        if ptbin >= 3:
+                            sample.setParamEffect(sys_wznormEW, 1.06)
+                        else:
+                            sample.setParamEffect(sys_wznormEW, 1.02)
                     if sName.startswith("h"):
                         sample.setParamEffect(sys_Hpt, 1.2)
 
@@ -702,7 +667,7 @@ def dummy_rhalphabet(pseudo,
 
                     sys_names = [
                         'JES', 'JER', 'UES', 'jet_trigger', 'btagEffStat', 'btagWeight', 'pileup_weight',
-                        'Z_d2kappa_EW', 'Z_d3kappa_EW', 'd1kappa_EW', 'd1K_NLO', 'd2K_NLO', 'd3K_NLO'
+                        # 'Z_d2kappa_EW', 'Z_d3kappa_EW', 'd1kappa_EW', 'd1K_NLO', 'd2K_NLO', 'd3K_NLO'
                     ]
                     for sys_name in sys_names:
                         if (("NLO" in sys_name) or ("EW" in sys_name)) and not sName in ['zbb', 'zcc', 'zqq', 'wcq', 'wqq']:
@@ -747,22 +712,22 @@ def dummy_rhalphabet(pseudo,
                         sample.scale(SF[year]['V_SF'])
                         sample.setParamEffect(
                             sys_veff, 1.0 + SF[year]['V_SF_ERR'] / SF[year]['V_SF'])
-                    # if sName.startswith("z"):
-                    #     sample.setParamEffect(sys_znormQ, 1.1)
-                    #     if ptbin >= 2:
-                    #         sample.setParamEffect(sys_znormEW, 1.07)
-                    #     else:
-                    #         sample.setParamEffect(sys_znormEW, 1.05)
-                    # if sName.startswith("w"):
-                    #     sample.setParamEffect(sys_znormQ, 1.1)
-                    #     if ptbin >= 2:
-                    #         sample.setParamEffect(sys_znormEW, 1.07)
-                    #     else:
-                    #         sample.setParamEffect(sys_znormEW, 1.05)
-                    #     if ptbin >= 3:
-                    #         sample.setParamEffect(sys_wznormEW, 1.06)
-                    #     else:
-                    #         sample.setParamEffect(sys_wznormEW, 1.02)
+                    if sName.startswith("z"):
+                        sample.setParamEffect(sys_znormQ, 1.1)
+                        if ptbin >= 2:
+                            sample.setParamEffect(sys_znormEW, 1.07)
+                        else:
+                            sample.setParamEffect(sys_znormEW, 1.05)
+                    if sName.startswith("w"):
+                        sample.setParamEffect(sys_znormQ, 1.1)
+                        if ptbin >= 2:
+                            sample.setParamEffect(sys_znormEW, 1.07)
+                        else:
+                            sample.setParamEffect(sys_znormEW, 1.05)
+                        if ptbin >= 3:
+                            sample.setParamEffect(sys_wznormEW, 1.06)
+                        else:
+                            sample.setParamEffect(sys_wznormEW, 1.02)
                     if sName.startswith("h"):
                         sample.setParamEffect(sys_Hpt, 1.2)
 

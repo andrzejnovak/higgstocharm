@@ -374,35 +374,40 @@ def full_plot(
     # Caculate diff
     if hasattr(cats[0]['data'], "_fEXhigh"):
         res = np.array(list(map(tgasym_to_err, [cat['data'] for cat in cats])))
+        variance = np.sum([((res[:, 2][i][0] + res[:, 2][i][1])/2)**2 for i in range(len(res[:, 2]))], axis=0)
     else:
         res = np.array(list(map(th1_to_err, [cat['data'] for cat in cats])))
+        variance = np.sum(res[:, 1], axis=0)
     _x, _y = res[:, 0][0], np.sum(res[:, 1], axis=0)
     _xerr = res[:, -1][0]
-    if sqrtnerr:
-        # FIXME fromFD should be separate
-        _yerr = np.sqrt(_h)
-    else:
-        _yerr = np.sqrt(np.sum(res[:, 2], axis=0))
-    # _yerr += 0.0000000001  # pad zeros
+    _yerr = np.sqrt(variance)
+    _yerr += 0.00000001  # pad zeros
 
     # y = np.copy(_y)
     bkgs = np.zeros_like(_y)
+    bkg_vars = np.zeros_like(_y)
     for mc in ['qcd', 'top', 'vvqq', 'wcq', 'wqq', 'zbb', 'zqq', 'hbb', 'vlep']:
-        #res = from_cats(th1_to_step, mc)
         res = from_cats(th1_to_step, mc)
         if len(res) == 0:
             continue
         bins, h = res[:, 0][0], np.sum(res[:, 1], axis=0)
-        #y -= h[:-1]
         bkgs += h[:-1]
+        bkg_vars += np.sum(from_cats(th1_to_err, mc)[:, 2], axis=0) # Should this be squared?
+
     y = _y - bkgs
 
-    err = np.sqrt(y + bkgs)/_yerr
-    # err = y/_yerr
+    err =_yerr/_yerr
     y /= _yerr
     _scale_for_mc = np.r_[_yerr, _yerr[-1]]
-
     plot_data(_x, y, yerr=[err, err], xerr=_xerr, ax=rax, ugh=ugh, zorder=10)
+
+    # print(_yerr)
+    # print(np.sqrt(bkg_vars))
+    band_size = np.sqrt(bkg_vars)/_yerr
+    # print(band_size)
+    band_size = np.r_[band_size, band_size[-1]]
+    rax.fill_between(bins, band_size, -band_size, label=None, color='gray', alpha=0.2, hatch='xxx',
+                     step='post')
 
     # Stack plots
     tot_h, bins = None, None
@@ -649,55 +654,55 @@ for shape_type in shape_types:
 import os
 from rhalphalib.plot.input_shapes import input_dict_maker
 
-try:
-    mockd = input_dict_maker(os.getcwd() + ".pkl")
-    input_pseudo = True
-    if args.toys or not args.pseudo:
-        input_pseudo = False
-    for shape_type in ["inputs"]:
-        pbins = [450, 500, 550, 600, 675, 800, 1200]
-        for region in regions:
-            print("Plotting inputs", region)
-            _mask = not input_pseudo
-            mask = (_mask &
-                    (region == "pass")) | (_mask &
-                                            (region == "pcc")) | (_mask &
-                                                                    (region == "pbb"))
-            full_plot([
-                mockd['ptbin{}{}{}_{}'.format(i, region, args.year, shape_type)]
-                for i in range(0, 6)
-                        ],
-                        pseudo=input_pseudo,
-                        fittype=shape_type,
-                        mask=mask,
-                        sqrtnerr=True,
-                        toys=False)
-            # Per bin plots
-            for i in range(0, 6):
-                if not args.run_all: continue
-                full_plot(
-                    [mockd['ptbin{}{}{}_{}'.format(i, region, args.year, shape_type)]],
+# try:
+mockd = input_dict_maker(os.getcwd() + ".pkl")
+input_pseudo = True
+if args.toys or not args.pseudo:
+    input_pseudo = False
+for shape_type in ["inputs"]:
+    pbins = [450, 500, 550, 600, 675, 800, 1200]
+    for region in regions:
+        print("Plotting inputs", region)
+        _mask = not input_pseudo
+        mask = (_mask &
+                (region == "pass")) | (_mask &
+                                        (region == "pcc")) | (_mask &
+                                                                (region == "pbb"))
+        full_plot([
+            mockd['ptbin{}{}{}_{}'.format(i, region, args.year, shape_type)]
+            for i in range(0, 6)
+                    ],
                     pseudo=input_pseudo,
                     fittype=shape_type,
                     mask=mask,
                     sqrtnerr=True,
                     toys=False)
+        # Per bin plots
+        for i in range(0, 6):
+            if not args.run_all: continue
+            full_plot(
+                [mockd['ptbin{}{}{}_{}'.format(i, region, args.year, shape_type)]],
+                pseudo=input_pseudo,
+                fittype=shape_type,
+                mask=mask,
+                sqrtnerr=True,
+                toys=False)
 
-            # MuonCR if included
-            try:
-                cat = mockd['muonCR{}{}_{}'.format(region, args.year, shape_type)]
-                full_plot([cat],
-                            fittype=shape_type,
-                            pseudo=input_pseudo,
-                            mask=False,
-                            sqrtnerr=True,
-                            toys=False)
-                print("Plotted input, muCR", region, shape_type)
-            except Exception:
-                print("Muon region not found")
-                pass
-except:
-    print("Input pkl file not found")
+        # MuonCR if included
+        try:
+            cat = mockd['muonCR{}{}_{}'.format(region, args.year, shape_type)]
+            full_plot([cat],
+                        fittype=shape_type,
+                        pseudo=input_pseudo,
+                        mask=False,
+                        sqrtnerr=True,
+                        toys=False)
+            print("Plotted input, muCR", region, shape_type)
+        except Exception:
+            print("Muon region not found")
+            pass
+# except:
+#     print("Input pkl file not found")
 
 if args.three_regions:
     plot_fractions(
