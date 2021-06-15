@@ -333,6 +333,19 @@ def full_plot(
                     hatch='///')
         tot_h += h
 
+    # Separate scaled signal
+    if args.scaleH:
+        for mc in ['hcc']:
+            res = from_cats(th1_to_step, mc)
+            if len(res) == 0:
+                continue
+            bins, h = res[:, 0][0], np.sum(res[:, 1], axis=0)
+            if np.sum(abs(h)) > 30:
+                args.scaleH = False
+            else:
+                h = h * 100
+            plot_step(bins, h, ax=ax, label=mc, linestyle='--')
+
     # Stack plots
     tot_h, bins = None, None
     #stack_samples = ['zcc', 'zbb', 'zqq', 'wcq', 'wqq']
@@ -358,14 +371,6 @@ def full_plot(
                 plot_step(bins, h + tot_h, label=mc, ax=ax)
             tot_h += h
 
-    # Separate scaled signal
-    if args.scaleH:
-        for mc in ['hcc']:
-            res = from_cats(th1_to_step, mc)
-            if len(res) == 0:
-                continue
-            bins, h = res[:, 0][0], np.sum(res[:, 1], axis=0)
-            plot_step(bins, h * 100, ax=ax, label=mc, linestyle='--')
 
     #######
     # Ratio plot
@@ -545,6 +550,8 @@ def full_plot(
         label_dict['hcc'] = "$\mathrm{H(c\\bar{c})}$ x 100"
         #label_dict['hqq'] = "$\mathrm{H(b\\bar{b})}$ x 500"
         #label_dict['hbb'] = "$\mathrm{H(b\\bar{b})}$ x 500"
+    else:
+        label_dict['hcc'] = "$\mathrm{H(c\\bar{c})}$"
 
     sorted_handles_labels = hep.plot.sort_legend(ax, label_dict)
     # Insert dummy to uneven legend to align right

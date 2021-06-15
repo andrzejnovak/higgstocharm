@@ -96,6 +96,8 @@ if __name__ == '__main__':
         degsMC = tuple([int(s) for s in configs['degsMC'].split(',')])
 
     if len(MCTF) > 0:
+        print(MCTF)
+        print(hmp)
         MCTF_map = np.array(MCTF).reshape(degsMC[0] + 1, degsMC[1] + 1)
 
     ##### Smooth plots

@@ -61,7 +61,7 @@ combine -M FitDiagnostics --expectSignal 1 -d model_combined.root --cminDefaultM
 combine -M FitDiagnostics --expectSignal 1 -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 --saveShapes --saveWithUncertainties -t -1 --toysFrequentist --setParameters z=1
 combine -M Significance model_combined.root --expectSignal 1 --redefineSignalPOIs z -t -1 --toysFrequentist
 combineTool.py -M AsymptoticLimits -m 125 -d model_combined.root --expectSignal 1 --setParameters z=1 --redefineSignalPOIs r -t -1 --toysFrequentist 
-python ../HiggsAnalysis/CombinedLimit/test/diffNuisances.py tempModel/fitDiagnostics.root 
+python ../../../HiggsAnalysis/CombinedLimit/test/diffNuisances.py fitDiagnostics.root 
 
 
 python ../plot.py --data 
@@ -98,26 +98,49 @@ plotImpacts.py -i impacts.json -o plots/impacts_out_H --blind
 Ensure signal min/max are sufficiently large
 ```
 export BIAS=bias0
-combineTool.py -M FitDiagnostics --expectSignal 0 -n $BIAS -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 -t 25 -s 1:40:1  --toysFrequentist --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHcc$BIAS
+combineTool.py -M FitDiagnostics --expectSignal 0 -n $BIAS -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 -t 20 -s 1:50:1  --toysFrequentist --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHcc$BIAS --random
 export BIAS=bias1
-combineTool.py -M FitDiagnostics --expectSignal 1 -n $BIAS -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 -t 25 -s 1:40:1  --toysFrequentist --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHcc$BIAS
+combineTool.py -M FitDiagnostics --expectSignal 1 -n $BIAS -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 -t 25 -s 1:50:1  --toysFrequentist --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHcc$BIAS --random
 export BIAS=bias5
-combineTool.py -M FitDiagnostics --expectSignal 5 -n $BIAS -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 -t 25 -s 1:40:1  --toysFrequentist --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHcc$BIAS
+combineTool.py -M FitDiagnostics --expectSignal 5 -n $BIAS -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 -t 25 -s 1:50:1  --toysFrequentist --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHcc$BIAS --random
 export BIAS=bias10
-combineTool.py -M FitDiagnostics --expectSignal 10 -n $BIAS -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 -t 25 -s 1:40:1  --toysFrequentist --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHcc$BIAS
+combineTool.py -M FitDiagnostics --expectSignal 10 -n $BIAS -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 -t 25 -s 1:50:1  --toysFrequentist --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHcc$BIAS --random
+export BIAS=bias30
+combineTool.py -M FitDiagnostics --expectSignal 30 -n $BIAS -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 -t 25 -s 1:50:1  --toysFrequentist --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHcc$BIAS --random
 export BIAS=bias50
-combineTool.py -M FitDiagnostics --expectSignal 50 -n $BIAS -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 -t 25 -s 1:40:1  --toysFrequentist --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHcc$BIAS
+combineTool.py -M FitDiagnostics --expectSignal 50 -n $BIAS -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 -t 25 -s 1:50:1  --toysFrequentist --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHcc$BIAS --random
+export BIAS=bias70
+combineTool.py -M FitDiagnostics --expectSignal 70 -n $BIAS -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 -t 25 -s 1:50:1  --toysFrequentist --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHcc$BIAS --random
 export BIAS=bias100
-combineTool.py -M FitDiagnostics --expectSignal 100 -n $BIAS -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 -t 25 -s 1:40:1  --toysFrequentist --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHcc$BIAS
+combineTool.py -M FitDiagnostics --expectSignal 100 -n $BIAS -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 -t 25 -s 1:50:1  --toysFrequentist --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHcc$BIAS --random
 ```
 ```
-for BIAS in bias0 bias1 bias5 bias10 bias50 bias100
+for BIAS in bias0 bias1 bias5 bias10 bias30 bias50 bias70 bias100
     do 
-    hadd  $BIAS.root *Combine$BIAS.*
+    hadd -f $BIAS.root *Combine$BIAS.*
     done
 
 ```
 
+```
+export BIAS=bias1k
+combineTool.py -M FitDiagnostics --expectSignal 100 -n $BIAS -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 -t 25 -s 1000:1020:1  --toysFrequentist --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHcc$BIAS
+export BIAS=bias5k
+combineTool.py -M FitDiagnostics --expectSignal 100 -n $BIAS -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 -t 25 -s 5000:5020:1  --toysFrequentist --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHcc$BIAS
+export BIAS=bias10k
+combineTool.py -M FitDiagnostics --expectSignal 100 -n $BIAS -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 -t 25 -s 10000:10020:1  --toysFrequentist --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHcc$BIAS
+export BIAS=bias100k
+combineTool.py -M FitDiagnostics --expectSignal 100 -n $BIAS -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 -t 25 -s 100000:100020:1  --toysFrequentist --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHcc$BIAS
+export BIAS=bias500k
+combineTool.py -M FitDiagnostics --expectSignal 100 -n $BIAS -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 -t 25 -s 500000:500020:1  --toysFrequentist --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHcc$BIAS
+```
+```
+for BIAS in bias1k bias5k bias10k bias100k bias500k
+    do 
+    hadd -f $BIAS.root *Combine$BIAS.*
+    done
+
+```
 
 
 ### Running likelihood scan

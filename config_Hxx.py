@@ -57,3 +57,25 @@ def TF_params(xparlist, xparnames=None, nrho=None, npt=None):
     TF_cf_map = np.array(xparlist).reshape(rhodeg + 1, ptdeg + 1)
 
     return TF_cf_map, rhodeg, ptdeg
+
+
+# SFs
+def ddxSF(pbin, flav):
+    # ptbins = np.array([450, 500, 550, 600, 675, 800, 1200])
+    _SFdict = {
+        'cc': {
+            "SF": [0.899, 1.152, 0.692],
+            "up": [0.254, 0.428, 0.309],
+            "down": [0.254, 0.426, 0.278],
+        }
+    }
+    if flav not in ['bb', 'cc', 'qq']:
+        raise ValueError("``flav`` has be one of ['bb', 'cc', 'qq'].")
+    if pbin in [0, 1, 2]:
+        return _SFdict[flav]['SF'][0], _SFdict[flav]['up'][0], _SFdict[flav]['down'][0]
+    elif pbin in [3, 4]:
+        return _SFdict[flav]['SF'][1], _SFdict[flav]['up'][1], _SFdict[flav]['down'][1]
+    elif pbin in [5]:
+        return _SFdict[flav]['SF'][2], _SFdict[flav]['up'][2], _SFdict[flav]['down'][2]
+    else:
+        raise RuntimeError()
