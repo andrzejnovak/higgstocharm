@@ -19,89 +19,7 @@ import mplhep as hep
 plt.style.use([hep.cms.style.ROOT, {'font.size': 24}])
 plt.switch_backend('agg')
 
-
-def str2bool(v):
-    if isinstance(v, bool):
-        return v
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
-        return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-        return False
-    else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
-
-
-parser = argparse.ArgumentParser()
-parser.add_argument("-d", "--dir", default='', help="Model/Fit dir")
-parser.add_argument("-i",
-                    "--input",
-                    default='fitDiagnostics.root',
-                    help="Input shapes file")
-parser.add_argument("--fit",
-                    default=None,
-                    choices={"prefit", "fit_s"},
-                    dest='fit',
-                    help="Shapes to plot")
-parser.add_argument("--3reg",
-                    action='store_true',
-                    dest='three_regions',
-                    help="By default plots pass/fail region. Set to plot pqq/pcc/pbb")
-parser.add_argument("--unmask",
-                    action='store_false',
-                    dest='mask',
-                    help="Mask Higgs bins")
-parser.add_argument("--all",
-                    action='store_true',
-                    dest='run_all',
-                    help="Include split pT bin plots")
-parser.add_argument("--run2", action='store_true', dest='run2', help="Stack all years")
-parser.add_argument("-o",
-                    "--output-folder",
-                    default='plots',
-                    dest='output_folder',
-                    help="Folder to store plots - will be created if it doesn't exist.")
-parser.add_argument("--year",
-                    default=None,
-                    choices={"2016", "2017", "2018"},
-                    type=str,
-                    help="year label")
-
-parser.add_argument("--scaleH",
-                    type=str2bool,
-                    default='True',
-                    choices={True, False},
-                    help="Scale Higgs signal in plots by 100")
-
-parser.add_argument("--filled",
-                    type=str2bool,
-                    default='True',
-                    choices={True, False},
-                    help="Use filled stack plots")
-
-parser.add_argument('-f',
-                    "--format",
-                    type=str,
-                    default='png',
-                    choices={'png', 'pdf'},
-                    help="Plot format")
-
-pseudo = parser.add_mutually_exclusive_group(required=True)
-pseudo.add_argument('--data', action='store_false', dest='pseudo')
-pseudo.add_argument('--MC', action='store_true', dest='pseudo')
-pseudo.add_argument('--toys', action='store_true', dest='toys')
-
-parser.add_argument('--inputonly', action='store_true', dest='inputonly')
-
-args = parser.parse_args()
-if args.output_folder.split("/")[0] != args.dir:
-    args.output_folder = os.path.join(args.dir, args.output_folder)
-
-if not args.run2:
-    configs = json.load(open("config.json"))
-    if args.year is None:
-        args.year = str(configs['year'])
-
-make_dirs(args.output_folder)
+pbins = [450, 500, 550, 600, 675, 800, 1200]
 
 cdict = {
     'hqq': '#6479B9',
@@ -156,9 +74,12 @@ def full_plot(
         fittype="",
         mask=False,
         toys=False,
-        sqrtnerr=False,
-        filled=False,
-        format=args.format,
+        sqrtnerr=True,
+        filled=True,
+        format='png',
+        scaleH=True,
+        run2=False,
+        year='',
 ):
 
     # Determine:
@@ -227,7 +148,7 @@ def full_plot(
         _h, _bins = th1.numpy()
         if restoreNorm:
             _h = _h * np.diff(_bins)
-        return _bins, np.r_[_h, _h[-1]]
+        return _bins, np.r_[_h, _h[-1]], th1.variances
 
     def th1_to_err(th1, restoreNorm=True):
         _h, _bins = th1.numpy()
@@ -286,7 +207,6 @@ def full_plot(
     plt.subplots_adjust(hspace=0)
 
     #  Main
-
     if hasattr(cats[0]['data'], "_fEXhigh"):
         res = np.array(list(map(tgasym_to_err, [cat['data'] for cat in cats])))
     else:
@@ -303,6 +223,10 @@ def full_plot(
         # print(_yerrlo, _yerrhi)
         #plot_data(_x, _h, yerr=[_yerrlo, _yerrhi], xerr=_xerr, ax=ax, ugh=ugh)
         plot_data(_x, _h, yerr=[np.sqrt(_h), np.sqrt(_h)], xerr=_xerr, ax=ax, ugh=ugh)
+
+    # Unc
+    res = from_cats(th1_to_step, 'total')
+    print("X", res)
 
     # Stack qcd/ttbar
     tot_h = None
@@ -334,14 +258,14 @@ def full_plot(
         tot_h += h
 
     # Separate scaled signal
-    if args.scaleH:
+    if scaleH:
         for mc in ['hcc']:
             res = from_cats(th1_to_step, mc)
             if len(res) == 0:
                 continue
             bins, h = res[:, 0][0], np.sum(res[:, 1], axis=0)
             if np.sum(abs(h)) > 30:
-                args.scaleH = False
+                scaleH = False
             else:
                 h = h * 100
             plot_step(bins, h, ax=ax, label=mc, linestyle='--')
@@ -350,7 +274,7 @@ def full_plot(
     tot_h, bins = None, None
     #stack_samples = ['zcc', 'zbb', 'zqq', 'wcq', 'wqq']
     stack_samples = ['hbb', 'zcc', 'zbb', 'zqq']
-    if not args.scaleH:
+    if not scaleH:
         stack_samples = ['hcc'] + stack_samples
     for mc in stack_samples:
         res = from_cats(th1_to_step, mc)
@@ -358,14 +282,14 @@ def full_plot(
             continue
         bins, h = res[:, 0][0], np.sum(res[:, 1], axis=0)
         if tot_h is None:
-            if args.filled:
+            if filled:
                 plot_filled(bins, h, h0=0, ax=ax, label=mc)
             else:
                 plot_step(bins, h, ax=ax, label=mc)
             tot_h = h
 
         else:
-            if args.filled:
+            if filled:
                 plot_filled(bins, h + tot_h, h0=tot_h, ax=ax, label=mc)
             else:
                 plot_step(bins, h + tot_h, label=mc, ax=ax)
@@ -419,7 +343,7 @@ def full_plot(
     #stack_samples = ['hbb', 'zbb', 'zcc', 'zqq', 'wcq', 'wqq']
     #stack_samples = ['hbb', 'zcc', 'zbb', 'zqq', ]
     stack_samples = ['zcc']
-    if not args.scaleH:
+    if not scaleH:
         stack_samples = ['hcc'] + stack_samples
     for mc in stack_samples:
         res = from_cats(th1_to_step, mc)
@@ -427,13 +351,13 @@ def full_plot(
             continue
         bins, h = res[:, 0][0], np.sum(res[:, 1], axis=0)
         if tot_h is None:
-            if args.filled:
+            if filled:
                 plot_filled(bins, h / _scale_for_mc, ax=rax, label=mc)
             else:
                 plot_step(bins, h / _scale_for_mc, ax=rax, label=mc)
             tot_h = h
         else:
-            if args.filled:
+            if filled:
                 plot_filled(bins, (h + tot_h) / _scale_for_mc,
                             tot_h / _scale_for_mc,
                             ax=rax,
@@ -443,7 +367,7 @@ def full_plot(
             tot_h += h
 
     # Separate scaled signal
-    if args.scaleH:
+    if scaleH:
         for mc in ['hcc']:
             res = from_cats(th1_to_step, mc)
             if len(res) == 0:
@@ -469,7 +393,7 @@ def full_plot(
         lumi_t = "mu"
     else:
         lumi_t = "jet"
-    if args.run2:
+    if run2:
         ax = hep.cms.cmslabel(ax=ax,
                               data=((not pseudo) | toys),
                               year='',
@@ -478,8 +402,8 @@ def full_plot(
     else:
         ax = hep.cms.cmslabel(ax=ax,
                               data=((not pseudo) | toys),
-                              year=args.year,
-                              lumi=lumi[lumi_t][str(args.year)],
+                              year=year,
+                              lumi=lumi[lumi_t][str(year)],
                               fontsize=22)
     ax.legend(ncol=2)
 
@@ -546,7 +470,7 @@ def full_plot(
                 annotation_clip=False)
 
     # Leg sort
-    if args.scaleH:
+    if scaleH:
         label_dict['hcc'] = "$\mathrm{H(c\\bar{c})}$ x 100"
         #label_dict['hqq'] = "$\mathrm{H(b\\bar{b})}$ x 500"
         #label_dict['hbb'] = "$\mathrm{H(b\\bar{b})}$ x 500"
@@ -573,164 +497,283 @@ def full_plot(
     #            ) + _iptname
     name = str(lab_reg) + _iptname
 
-    fig.savefig('{}/{}.{}'.format(args.output_folder, fittype + "_" + name, format),
+    if args:
+        fig.savefig('{}/{}.{}'.format(args.output_folder, fittype + "_" + name, format),
                 bbox_inches="tight")
 
 
-if args.fit is None:
-    shape_types = ['prefit', 'fit_s']
-else:
-    shape_types = [args.fit]
-if args.three_regions:
-    regions = ['pqq', 'pcc', 'pbb']
-else:
-    regions = ['pass', 'fail']
-
-# f = uproot.open(os.path.join(args.dir, args.input))
-f = uproot.open(args.input)
-for shape_type in shape_types:
-    pbins = [450, 500, 550, 600, 675, 800, 1200]
-    if args.inputonly:
-        continue
-    for region in regions:
-        print("Plotting {} region".format(region), shape_type)
-        mask = (args.mask &
-                (region == "pass")) | (args.mask &
-                                       (region == "pcc")) | (args.mask &
-                                                             (region == "pbb"))
-        for i in range(0, 6):
-            if not args.run_all: continue
-            cat_name = 'shapes_{}/ptbin{}{}{};1'.format(shape_type, i, region,
-                                                        args.year)
-            try:
-                cat = f[cat_name]
-            except Exception:
-                raise ValueError("Namespace {} is not available, only following"
-                                 "namespaces were found in the file: {}".format(
-                                     args.fit, f.keys()))
-
-            fig = full_plot([cat],
-                            pseudo=args.pseudo,
-                            fittype=shape_type,
-                            mask=mask,
-                            toys=args.toys,
-                            sqrtnerr=True)
-
-        if args.run2:
-            cat_list = [
-                f['shapes_{}/ptbin{}{}{};1'.format(shape_type, i, region, '2016')]
-                for i in range(0, 6)
-            ]
-            cat_list += [
-                f['shapes_{}/ptbin{}{}{};1'.format(shape_type, i, region, '2017')]
-                for i in range(0, 6)
-            ]
-            cat_list += [
-                f['shapes_{}/ptbin{}{}{};1'.format(shape_type, i, region, '2018')]
-                for i in range(0, 6)
-            ]
+if __name__ == '__main__':
+    def str2bool(v):
+        if isinstance(v, bool):
+            return v
+        if v.lower() in ('yes', 'true', 't', 'y', '1'):
+            return True
+        elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+            return False
         else:
-            cat_list = [
-                f['shapes_{}/ptbin{}{}{};1'.format(shape_type, i, region, args.year)]
-                for i in range(0, 6)
-            ]
-        full_plot(cat_list,
-                  pseudo=args.pseudo,
-                  fittype=shape_type,
-                  mask=mask,
-                  toys=args.toys,
-                  sqrtnerr=True)
+            raise argparse.ArgumentTypeError('Boolean value expected.')
 
-        # MuonCR if included
-        if any(['muonCR' in s for s in f['shapes_{}'.format(shape_type)].keys()]):
-            if args.run2:
-                cat_list = [f['shapes_{}/muonCR{}{};1'.format(shape_type, region, '2016')]]
-                cat_list += [f['shapes_{}/muonCR{}{};1'.format(shape_type, region, '2017')]]
-                cat_list += [f['shapes_{}/muonCR{}{};1'.format(shape_type, region, '2018')]]
-                full_plot(cat_list, args.pseudo, fittype=shape_type, toys=args.toys, sqrtnerr=True)
-            else:    
-                cat = f['shapes_{}/muonCR{}{};1'.format(shape_type, region, args.year)]
-                full_plot([cat], args.pseudo, fittype=shape_type, toys=args.toys, sqrtnerr=True)
-            print("Plotted muCR", region, shape_type)
-        else:
-            print("Muon region not found")
 
-##### Input shape plotter
-# Take sqrt N err for data
-# Mock QCD while unavailable as template in rhalpha
-import os
-from rhalphalib.plot.input_shapes import input_dict_maker
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-d", "--dir", default='', help="Model/Fit dir")
+    parser.add_argument("-i",
+                        "--input",
+                        default='fitDiagnostics.root',
+                        help="Input shapes file")
+    parser.add_argument("--fit",
+                        default=None,
+                        choices={"prefit", "fit_s"},
+                        dest='fit',
+                        help="Shapes to plot")
+    parser.add_argument("--3reg",
+                        action='store_true',
+                        dest='three_regions',
+                        help="By default plots pass/fail region. Set to plot pqq/pcc/pbb")
+    parser.add_argument("--unmask",
+                        action='store_false',
+                        dest='mask',
+                        help="Mask Higgs bins")
+    parser.add_argument("--all",
+                        action='store_true',
+                        dest='run_all',
+                        help="Include split pT bin plots")
+    parser.add_argument("--run2", action='store_true', dest='run2', help="Stack all years")
+    parser.add_argument("-o",
+                        "--output-folder",
+                        default='plots',
+                        dest='output_folder',
+                        help="Folder to store plots - will be created if it doesn't exist.")
+    parser.add_argument("--year",
+                        default=None,
+                        choices={"2016", "2017", "2018"},
+                        type=str,
+                        help="year label")
 
-# try:
-mockd = input_dict_maker(os.getcwd() + ".pkl")
-input_pseudo = True
-if args.toys or not args.pseudo:
-    input_pseudo = False
-for shape_type in ["inputs"]:
-    pbins = [450, 500, 550, 600, 675, 800, 1200]
-    for region in regions:
-        print("Plotting inputs", region)
-        _mask = not input_pseudo
-        mask = (_mask &
-                (region == "pass")) | (_mask &
-                                        (region == "pcc")) | (_mask &
+    parser.add_argument("--scaleH",
+                        type=str2bool,
+                        default='True',
+                        choices={True, False},
+                        help="Scale Higgs signal in plots by 100")
+
+    parser.add_argument("--filled",
+                        type=str2bool,
+                        default='True',
+                        choices={True, False},
+                        help="Use filled stack plots")
+
+    parser.add_argument('-f',
+                        "--format",
+                        type=str,
+                        default='png',
+                        choices={'png', 'pdf'},
+                        help="Plot format")
+
+    pseudo = parser.add_mutually_exclusive_group(required=True)
+    pseudo.add_argument('--data', action='store_false', dest='pseudo')
+    pseudo.add_argument('--MC', action='store_true', dest='pseudo')
+    pseudo.add_argument('--toys', action='store_true', dest='toys')
+
+    parser.add_argument('--inputonly', action='store_true', dest='inputonly')
+
+    args = parser.parse_args()
+    if args.output_folder.split("/")[0] != args.dir:
+        args.output_folder = os.path.join(args.dir, args.output_folder)
+
+    if not args.run2:
+        configs = json.load(open("config.json"))
+        if args.year is None:
+            args.year = str(configs['year'])
+
+    make_dirs(args.output_folder)
+
+    if args.fit is None:
+        shape_types = ['prefit', 'fit_s']
+    else:
+        shape_types = [args.fit]
+    if args.three_regions:
+        regions = ['pqq', 'pcc', 'pbb']
+    else:
+        regions = ['pass', 'fail']
+
+    # f = uproot.open(os.path.join(args.dir, args.input))
+    f = uproot.open(args.input)
+    for shape_type in shape_types:
+        pbins = [450, 500, 550, 600, 675, 800, 1200]
+        if args.inputonly:
+            continue
+        for region in regions:
+            print("Plotting {} region".format(region), shape_type)
+            mask = (args.mask &
+                    (region == "pass")) | (args.mask &
+                                        (region == "pcc")) | (args.mask &
                                                                 (region == "pbb"))
-        full_plot([
-            mockd['ptbin{}{}{}_{}'.format(i, region, args.year, shape_type)]
-            for i in range(0, 6)
-                    ],
+            for i in range(0, 6):
+                if not args.run_all: continue
+                cat_name = 'shapes_{}/ptbin{}{}{};1'.format(shape_type, i, region,
+                                                            args.year)
+                try:
+                    cat = f[cat_name]
+                except Exception:
+                    raise ValueError("Namespace {} is not available, only following"
+                                    "namespaces were found in the file: {}".format(
+                                        args.fit, f.keys()))
+
+                fig = full_plot([cat],
+                                pseudo=args.pseudo,
+                                fittype=shape_type,
+                                mask=mask,
+                                toys=args.toys,
+                                sqrtnerr=True,
+                                format=args.format,
+                                year=args.year)
+
+            if args.run2:
+                cat_list = [
+                    f['shapes_{}/ptbin{}{}{};1'.format(shape_type, i, region, '2016')]
+                    for i in range(0, 6)
+                ]
+                cat_list += [
+                    f['shapes_{}/ptbin{}{}{};1'.format(shape_type, i, region, '2017')]
+                    for i in range(0, 6)
+                ]
+                cat_list += [
+                    f['shapes_{}/ptbin{}{}{};1'.format(shape_type, i, region, '2018')]
+                    for i in range(0, 6)
+                ]
+            else:
+                cat_list = [
+                    f['shapes_{}/ptbin{}{}{};1'.format(shape_type, i, region, args.year)]
+                    for i in range(0, 6)
+                ]
+            full_plot(cat_list,
+                    pseudo=args.pseudo,
+                    fittype=shape_type,
+                    mask=mask,
+                    toys=args.toys,
+                    sqrtnerr=True,
+                    format=args.format,
+                    year=args.year,
+                    )
+
+            # MuonCR if included
+            if any(['muonCR' in s for s in f['shapes_{}'.format(shape_type)].keys()]):
+                if args.run2:
+                    cat_list = [f['shapes_{}/muonCR{}{};1'.format(shape_type, region, '2016')]]
+                    cat_list += [f['shapes_{}/muonCR{}{};1'.format(shape_type, region, '2017')]]
+                    cat_list += [f['shapes_{}/muonCR{}{};1'.format(shape_type, region, '2018')]]
+                    full_plot(cat_list,
+                              args.pseudo,
+                              fittype=shape_type,
+                              toys=args.toys,
+                              sqrtnerr=True,
+                              format=args.format,
+                              year=args.year,
+                              scaleH=args.scaleH,
+                              )
+                else:
+                    cat = f['shapes_{}/muonCR{}{};1'.format(shape_type, region, args.year)]
+                    full_plot(
+                        [cat],
+                        args.pseudo,
+                        fittype=shape_type,
+                        toys=args.toys,
+                        sqrtnerr=True,
+                        format=args.format,
+                        year=args.year,
+                        scaleH=args.scaleH,
+                    )
+                print("Plotted muCR", region, shape_type)
+            else:
+                print("Muon region not found")
+
+    ##### Input shape plotter
+    # Take sqrt N err for data
+    # Mock QCD while unavailable as template in rhalpha
+    import os
+    from rhalphalib.plot.input_shapes import input_dict_maker
+
+    # try:
+    mockd = input_dict_maker(os.getcwd() + ".pkl")
+    input_pseudo = True
+    if args.toys or not args.pseudo:
+        input_pseudo = False
+    for shape_type in ["inputs"]:
+        pbins = [450, 500, 550, 600, 675, 800, 1200]
+        for region in regions:
+            print("Plotting inputs", region)
+            _mask = not input_pseudo
+            mask = (_mask &
+                    (region == "pass")) | (_mask &
+                                            (region == "pcc")) | (_mask &
+                                                                    (region == "pbb"))
+            full_plot([
+                mockd['ptbin{}{}{}_{}'.format(i, region, args.year, shape_type)]
+                for i in range(0, 6)
+                        ],
+                        pseudo=input_pseudo,
+                        fittype=shape_type,
+                        mask=mask,
+                        sqrtnerr=True,
+                        toys=False,
+                        format=args.format,
+                        year=args.year,
+                        scaleH=args.scaleH,
+                        )
+            # Per bin plots
+            for i in range(0, 6):
+                if not args.run_all: continue
+                full_plot(
+                    [mockd['ptbin{}{}{}_{}'.format(i, region, args.year, shape_type)]],
                     pseudo=input_pseudo,
                     fittype=shape_type,
                     mask=mask,
                     sqrtnerr=True,
-                    toys=False)
-        # Per bin plots
-        for i in range(0, 6):
-            if not args.run_all: continue
-            full_plot(
-                [mockd['ptbin{}{}{}_{}'.format(i, region, args.year, shape_type)]],
-                pseudo=input_pseudo,
-                fittype=shape_type,
-                mask=mask,
-                sqrtnerr=True,
-                toys=False)
+                    toys=False,
+                    format=args.format,
+                    year=args.year,
+                    scaleH=args.scaleH,
+                    )
 
-        # MuonCR if included
-        try:
-            cat = mockd['muonCR{}{}_{}'.format(region, args.year, shape_type)]
-            full_plot([cat],
-                        fittype=shape_type,
-                        pseudo=input_pseudo,
-                        mask=False,
-                        sqrtnerr=True,
-                        toys=False)
-            print("Plotted input, muCR", region, shape_type)
-        except Exception:
-            print("Muon region not found")
-            pass
-# except:
-#     print("Input pkl file not found")
+            # MuonCR if included
+            try:
+                cat = mockd['muonCR{}{}_{}'.format(region, args.year, shape_type)]
+                full_plot([cat],
+                            fittype=shape_type,
+                            pseudo=input_pseudo,
+                            mask=False,
+                            sqrtnerr=True,
+                            toys=False,
+                            format=args.format,
+                            year=args.year,
+                            scaleH=args.scaleH
+                )
+                print("Plotted input, muCR", region, shape_type)
+            except Exception:
+                print("Muon region not found")
+                pass
+    # except:
+    #     print("Input pkl file not found")
 
-if args.three_regions:
-    plot_fractions(
+    if args.three_regions:
+        plot_fractions(
+            os.path.join(args.dir, 'fitDiagnostics.root'),
+            os.path.join(args.dir, 'model_combined.root'),
+            out='{}/{}.{}'.format(args.output_folder, 'fractions', args.format),
+            data=((not args.pseudo) | args.toys),
+            year=args.year,
+        )
+
+    plot_cov(
         os.path.join(args.dir, 'fitDiagnostics.root'),
-        os.path.join(args.dir, 'model_combined.root'),
-        out='{}/{}.{}'.format(args.output_folder, 'fractions', args.format),
+        out='{}/{}.{}'.format(args.output_folder, 'covariances', args.format),
         data=((not args.pseudo) | args.toys),
         year=args.year,
     )
 
-plot_cov(
-    os.path.join(args.dir, 'fitDiagnostics.root'),
-    out='{}/{}.{}'.format(args.output_folder, 'covariances', args.format),
-    data=((not args.pseudo) | args.toys),
-    year=args.year,
-)
-
-plot_cov(
-    os.path.join(args.dir, 'fitDiagnostics.root'),
-    out='{}/{}_wTF.{}'.format(args.output_folder, 'covariances', args.format),
-    data=((not args.pseudo) | args.toys),
-    year=args.year,
-    include='tf',
-)
+    plot_cov(
+        os.path.join(args.dir, 'fitDiagnostics.root'),
+        out='{}/{}_wTF.{}'.format(args.output_folder, 'covariances', args.format),
+        data=((not args.pseudo) | args.toys),
+        year=args.year,
+        include='tf',
+    )

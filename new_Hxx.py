@@ -53,16 +53,6 @@ rl.util.install_roofit_helpers()
 
 SF = {
     "2016": {
-        # 'V_SF': 0.832,
-        # 'V_SF_ERR': 0.035,
-        # 'shift_SF': 0.988,
-        # 'shift_SF_ERR': 0.018,
-        # 'smear_SF': 0.952,
-        # 'smear_SF_ERR': 0.049,
-        # 'W_SF': 0.558,
-        # 'W_SF_ERR': 0.157,
-        # 'CC_SF': 1,  # 1.0,
-        # 'CC_SF_ERR': .3,  # 0.3,  # prelim ddb SF
         'V_SF': 0.876,
         'V_SF_ERR': 0.017,
         'W_SF': 0.705,
@@ -73,34 +63,35 @@ SF = {
         'smear_SF_ERR': 0.01765
     },
     "2017": {
-        # 'V_SF': 0.880,
+        # Default
+        # 'V_SF': 0.883,
         # 'V_SF_ERR': 0.022,
-        # 'shift_SF': 0.988,
-        # 'shift_SF_ERR': 0.001,
-        # 'smear_SF': 0.983,
-        # 'smear_SF_ERR': 0.049,
-        # 'W_SF': 0.666,
-        # 'W_SF_ERR': 0.092,        
-        # 'CC_SF': 1.,  # 1.0,
-        # 'CC_SF_ERR': .3,  # 0.3,  # prelim ddb SF
-        'V_SF': 0.883,
-        'V_SF_ERR': 0.022,
-        'W_SF': 0.664,
-        'W_SF_ERR': 0.091,
+        # 'W_SF': 0.664,
+        # 'W_SF_ERR': 0.091,
+        # 'shift_SF': -1.0,
+        # 'shift_SF_ERR': 0.051,
+        # 'smear_SF': 1.015,
+        # 'smear_SF_ERR': 0.014
+        # No N2
+        'V_SF': 0.967,
+        'V_SF_ERR': 0.009,
+        'W_SF': 0.576,
+        'W_SF_ERR': 0.08,
         'shift_SF': -1.0,
-        'shift_SF_ERR': 0.051,
-        'smear_SF': 1.015,
-        'smear_SF_ERR': 0.014
+        'shift_SF_ERR': 0.055,
+        'smear_SF': 1.0148,
+        'smear_SF_ERR': 0.0130
+        # Just CvL
+        # 'V_SF': 1, # No effect
+        # 'V_SF_ERR': 0,
+        # 'W_SF': 0.57,
+        # 'W_SF_ERR': 0.078,
+        # 'shift_SF': -1.0,
+        # 'shift_SF_ERR': 0.043,
+        # 'smear_SF': 1.0232,
+        # 'smear_SF_ERR': 0.01695
     },
     "2018": {
-        # 'V_SF': 0.859,
-        # 'V_SF_ERR': 0.024,
-        # 'shift_SF': 1.002,
-        # 'shift_SF_ERR': 0.003,
-        # 'smear_SF': 0.952,
-        # 'smear_SF_ERR': 0.05,
-        # 'W_SF': 0.694,
-        # 'W_SF_ERR': 0.135,
         'V_SF': 0.896,
         'V_SF_ERR': 0.013,
         'W_SF': 0.714,
@@ -348,9 +339,18 @@ def dummy_rhalphabet(pseudo,
     # Separate out QCD to QCD fit
     if MCTF:
         degsMC = tuple([int(s) for s in opts.degsMC.split(',')])
+        _basisMC = opts.basis.split(",")[0]
+        if _basisMC == 'Bernstein':
+            _inits = np.ones(tuple(n + 1 for n in degsMC))
+        elif _basisMC == 'Chebyshev':
+            _inits = np.zeros(tuple(n + 1 for n in degsMC))
+            _inits[0,0] = 1
+        else:
+            raise ValueError("Basis ``{}`` not understood.".format(_basisMC))
         tf_MCtempl = rl.BasisPoly("tf{}_MCtempl".format(year),
-                                      degsMC, ['pt', 'rho'], basis='Bernstein',
-                                      limits=(0, 10), coefficient_transform=None)
+                                      degsMC, ['pt', 'rho'], basis=_basisMC,
+                                      init_params = _inits,
+                                      limits=(-10, 10), coefficient_transform=None)
         tf_MCtempl_params = qcdeff * tf_MCtempl(ptscaled, rhoscaled)
 
         for ptbin in range(npt):
@@ -504,10 +504,9 @@ def dummy_rhalphabet(pseudo,
                 MORPHNOMINAL = True
                 def smorph(templ):                        
                     if MORPHNOMINAL and sName not in ['qcd', 'zll', 'wln', 'vvqq']:
-                        # return MorphHistW2(templ).get(shift=SF[year]['shift_SF'] * smass(sName) - smass(sName),
-                        #                               smear=SF[year]['smear_SF'])
                         return MorphHistW2(templ).get(shift=SF[year]['shift_SF']/smass('wcq') * smass(sName),
-                                                      smear=SF[year]['smear_SF'])
+                                                      smear=SF[year]['smear_SF']
+                                                      )
                     else:
                         return templ
                 templ = smorph(templ)
@@ -656,14 +655,22 @@ def dummy_rhalphabet(pseudo,
             ch.mask = mask
 
     if fitTF:
-        degs = tuple([int(s) for s in opts.degs.split(',')])
         if opts.transform:
             _transform = np.exp
         else:
             _transform = None
+        degs = tuple([int(s) for s in opts.degs.split(',')])
+        _basis = opts.basis.split(",")[1]
+        if _basis == 'Bernstein':
+            _inits = np.ones(tuple(n + 1 for n in degs))
+        elif _basis == 'Chebyshev':
+            _inits = np.zeros(tuple(n + 1 for n in degs))
+            _inits[0,0] = 1
+        else:
+            raise ValueError("Basis ``{}`` not understood.".format(_basis))
         tf_dataResidual = rl.BasisPoly("tf{}_dataResidual".format(year),
-                                           degs, ['pt', 'rho'], 
-                                           limits=(0, 10), coefficient_transform=_transform)
+                                       degs, ['pt', 'rho'], basis=_basis, init_params=_inits,
+                                       limits=(0, 10), coefficient_transform=_transform)
         tf_dataResidual_params = tf_dataResidual(ptscaled, rhoscaled)
         if MCTF:
             tf_params = qcdeff * tf_MCtempl_params_final * tf_dataResidual_params
@@ -881,6 +888,13 @@ if __name__ == '__main__':
                         default='False',
                         choices={True, False},
                         help="If plotting data, redraw from poisson distribution")
+    
+    parser.add_argument("--basis",
+                        type=str,
+                        default='Bernstein,Bernstein',
+                        help="Comma separated bases for TF fits (MC,Residual)."
+                             "Choose from {'Bernstein' | 'Chebyshev'}"
+                        )
 
     parser.add_argument("--fitTF",
                         type=str2bool,
