@@ -226,7 +226,6 @@ def full_plot(
 
     # Unc
     res = from_cats(th1_to_step, 'total')
-    print("X", res)
 
     # Stack qcd/ttbar
     tot_h = None
@@ -652,7 +651,8 @@ if __name__ == '__main__':
                     toys=args.toys,
                     sqrtnerr=True,
                     format=args.format,
-                    year=args.year,
+                    year="" if args.run2 else args.year,
+                    run2=args.run2, 
                     )
 
             # MuonCR if included
@@ -667,8 +667,9 @@ if __name__ == '__main__':
                               toys=args.toys,
                               sqrtnerr=True,
                               format=args.format,
-                              year=args.year,
+                              year="",
                               scaleH=args.scaleH,
+                              run2=args.run2, 
                               )
                 else:
                     cat = f['shapes_{}/muonCR{}{};1'.format(shape_type, region, args.year)]

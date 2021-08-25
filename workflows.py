@@ -7,10 +7,6 @@ ROOT.gStyle.SetOptStat(0)
 import sys
 import re
 import json
-# sys.path.append('/afs/desy.de/user/a/albrechs/xxl/af-cms/UHH2/10_2_17/CMSSW_10_2_17/src/UHH2/JetMass/python')
-# import cms_style
-# cms_style.extra_text="Preliminary Simulation"
-# cms_style.cms_style()
 cms_logo = False
 global silence
 silence = False

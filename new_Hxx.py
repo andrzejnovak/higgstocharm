@@ -53,43 +53,25 @@ rl.util.install_roofit_helpers()
 
 SF = {
     "2016": {
-        'V_SF': 0.876,
+        'V_SF': 0.875,
         'V_SF_ERR': 0.017,
-        'W_SF': 0.705,
+        'W_SF': 0.605,
         'W_SF_ERR': 0.088,
-        'shift_SF': -1.0,
-        'shift_SF_ERR': 0.088,
-        'smear_SF': 1.02345,
-        'smear_SF_ERR': 0.01765
+        'shift_SF': -1.245,
+        'shift_SF_ERR': 0.21,
+        'smear_SF': 1.02415,
+        'smear_SF_ERR': 0.0174,
     },
     "2017": {
         # Default
-        # 'V_SF': 0.883,
-        # 'V_SF_ERR': 0.022,
-        # 'W_SF': 0.664,
-        # 'W_SF_ERR': 0.091,
-        # 'shift_SF': -1.0,
-        # 'shift_SF_ERR': 0.051,
-        # 'smear_SF': 1.015,
-        # 'smear_SF_ERR': 0.014
-        # No N2
-        'V_SF': 0.967,
-        'V_SF_ERR': 0.009,
-        'W_SF': 0.576,
-        'W_SF_ERR': 0.08,
-        'shift_SF': -1.0,
-        'shift_SF_ERR': 0.055,
-        'smear_SF': 1.0148,
-        'smear_SF_ERR': 0.0130
-        # Just CvL
-        # 'V_SF': 1, # No effect
-        # 'V_SF_ERR': 0,
-        # 'W_SF': 0.57,
-        # 'W_SF_ERR': 0.078,
-        # 'shift_SF': -1.0,
-        # 'shift_SF_ERR': 0.043,
-        # 'smear_SF': 1.0232,
-        # 'smear_SF_ERR': 0.01695
+        'V_SF': 0.881,
+        'V_SF_ERR': 0.022,
+        'W_SF': 0.663,
+        'W_SF_ERR': 0.091,
+        'shift_SF': -1.425,
+        'shift_SF_ERR': 0.21,
+        'smear_SF': 1.01605,
+        'smear_SF_ERR': 0.0131
     },
     "2018": {
         'V_SF': 0.896,
@@ -458,7 +440,8 @@ def dummy_rhalphabet(pseudo,
             mask = validbins[ptbin].copy()
             if not pseudo and region == 'pass':
                 if blind:
-                    mask[4:7] = False
+                    #mask[4:7] = False
+                    mask[6:9] = False
                     mask[10:14] = False
 
             from functools import partial
@@ -537,14 +520,6 @@ def dummy_rhalphabet(pseudo,
                         if opts.fast == 0:  # Convert to lnN for faster fitting
                             _sys_ef = shape_to_num(f, region, sName, ptbin,
                                                     sys_name, mask)
-                            print("XXX", sys_name, _sys_ef)
-                            # if not np.isfinite(_sys_ef):
-                                
-                            #     print(get_templ(f,
-                            #                 region,
-                            #                 sName,
-                            #                 ptbin,
-                            #                 syst=sys_name + "Up"))
                             if _sys_ef is None:
                                 continue
                             sample.setParamEffect(sys_shape_dict[sys_name], _sys_ef)
