@@ -64,19 +64,6 @@ if __name__ == "__main__":
                 #     " --redefineSignalPOIs z"
                 #     )
                 
-                # os.system(
-                #     "combineTool.py -M AsymptoticLimits -m 125 -d model_combined.root --there --expectSignal 1 "
-                #     " -t -1 --toysFrequentist"
-                #     " --redefineSignalPOIs r"
-                # )
-                # os.system("combine -M Significance model_combined.root --expectSignal 1 -t -1 --toysFrequentist")
-                # os.system("combine -M Significance model_combined.root --expectSignal 1")
-                # os.system("python ../plot.py --MC")
-                # os.system("python ../plotTF.py")
-                # os.system(
-                #     "combineTool.py -M GoodnessOfFit model_combined.root --algorithm saturated -n {} --expectSignal 1"
-                #     .format("ptrho" + str(pt) + str(rho)))
-
                 ### F-tests\
                 # continue
                 _seed = "1:10:1"
