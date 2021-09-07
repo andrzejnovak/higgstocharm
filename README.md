@@ -74,12 +74,12 @@ python ../plotTF.py
 Fitting Z
 ```
 # Baseline
-combineTool.py -M Impacts -d model_combined.root -m 125 --doInitialFit --robustFit 1 --setParameterRanges r=-1,5 --cminDefaultMinimizerStrategy 0 --X-rtd FITTER_DYN_STEP --expectSignal 1 -t -1 --toysFrequentist 
+combineTool.py -M Impacts -d model_combined.root -m 125 --doInitialFit --robustFit 1 --setParameterRanges r=-1,5 --cminDefaultMinimizerStrategy 0 --X-rtd FITTER_DYN_STEP --expectSignal 1 -t -1 --toysFrequentist --redefineSignalPOIs z
 # Condor
-combineTool.py -M Impacts -d model_combined.root -m 125 --doFits --robustFit 1 --allPars --setParameterRanges r=-1,5  -t -1 --toysFrequentist --expectSignal 1 --cminDefaultMinimizerStrategy 0 --X-rtd MINIMIZER_analytic --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHccZ --exclude 'rgx{qcdparams*}'
+combineTool.py -M Impacts -d model_combined.root -m 125 --doFits --robustFit 1 --allPars --setParameterRanges r=-1,5  -t -1 --toysFrequentist --expectSignal 1 --redefineSignalPOIs z --cminDefaultMinimizerStrategy 0 --X-rtd MINIMIZER_analytic --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHccZ --exclude 'rgx{qcdparams*}'
 # Collect
-combineTool.py -M Impacts -d model_combined.root -o impacts.json
-plotImpacts.py -i impacts.json -o plots/impacts_out_Z --blind
+combineTool.py -M Impacts -d model_combined.root -m 125 --redefineSignalPOIs z -o impactsZ.json
+plotImpacts.py -i impactsZ.json -o plots/impacts_out_Z --blind
 ```
 
 Fitting H
@@ -89,8 +89,8 @@ combineTool.py -M Impacts -d model_combined.root -m 125 --doInitialFit --robustF
 # Condor
 combineTool.py -M Impacts -d model_combined.root -m 125 --doFits --robustFit 1 --allPars --setParameterRanges r=-500,500  -t -1 --toysFrequentist --expectSignal 40 --cminDefaultMinimizerStrategy 0 --X-rtd MINIMIZER_analytic --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHccH --exclude 'rgx{qcdparams*}'
 # Collect
-combineTool.py -M Impacts -m 125 -d model_combined.root -o impacts.json
-plotImpacts.py -i impacts.json -o plots/impacts_out_H --blind
+combineTool.py -M Impacts -m 125 -d model_combined.root -o impactsH.json
+plotImpacts.py -i impactsH.json -o plots/impacts_out_H --blind
 ```
 
 
