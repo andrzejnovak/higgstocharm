@@ -206,7 +206,23 @@ def dummy_rhalphabet(pseudo,
                      opts=None):
 
     # Default lumi (needs at least one systematics for prefit)
-    sys_lumi = rl.NuisanceParameter('CMS_lumi', 'lnN')
+    sys_lumi = rl.NuisanceParameter('CMS_lumi_13TeV_{}'.format(year), 'lnN')
+    sys_lumi_correlated = rl.NuisanceParameter('CMS_lumi_13TeV_correlated', 'lnN')
+    sys_lumi_1718 = rl.NuisanceParameter('CMS_lumi_13TeV_1718', 'lnN')
+    lumi_dict = {
+        "2016": 1.01,
+        "2017": 1.02,
+        "2018": 1.015,
+    }
+    lumi_correlated_dict = {
+        "2016": 1.006,
+        "2017": 1.009,
+        "2018": 1.02,
+    }
+    lumi_1718_dict = {
+        "2017": 1.006,
+        "2018": 1.002,
+    }
     # TT params
     tqqeffSF = rl.IndependentParameter('tqqeffSF_{}'.format(year), 1., 0, 10)
     tqqnormSF = rl.IndependentParameter('tqqnormSF_{}'.format(year), 1., 0, 10)
@@ -499,9 +515,12 @@ def dummy_rhalphabet(pseudo,
                 # Systematics
                 #####################################################
                 if not systs:  # Need at least one
-                    sample.setParamEffect(sys_lumi, 1.023)
+                    sample.setParamEffect(sys_lumi, lumi_dict[year])
                 else:
-                    sample.setParamEffect(sys_lumi, 1.023)
+                    sample.setParamEffect(sys_lumi, lumi_dict[year])
+                    sample.setParamEffect(sys_lumi_correlated, lumi_correlated_dict[year])
+                    if year != '2016':
+                        sample.setParamEffect(sys_lumi_1718, lumi_1718_dict[year])
                     sample.setParamEffect(sys_eleveto, 1.005)
                     sample.setParamEffect(sys_muveto, 1.005)
 
