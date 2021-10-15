@@ -11,46 +11,6 @@ from util import make_dirs
 
 rl.util.install_roofit_helpers()
 
-# warnings.filterwarnings('error')
-# SF = {
-#     "2017": {
-#         'V_SF': 0.897,
-#         'V_SF_ERR': 0.028,
-#         'shift_SF': 0.992,
-#         'shift_SF_ERR': 0.0035,
-#         'smear_SF': 0.944,
-#         'smear_SF_ERR': 0.047,
-#         'W_SF': 0.668,
-#         'W_SF_ERR': 0.133,        
-#         'CC_SF': 1,  # 1.0,
-#         'CC_SF_ERR': .3,  # 0.3,  # prelim ddb SF
-#     },
-#     "2018": {
-#         'V_SF': 0.931,
-#         'V_SF_ERR': 0.017,
-#         'shift_SF': 1.006,
-#         'shift_SF_ERR': 0.002,
-#         'smear_SF': 0.880,
-#         'smear_SF_ERR': 0.048,
-#         'W_SF': 0.697,
-#         'W_SF_ERR': 0.09,
-#         'CC_SF': 1,  # 1.0,
-#         'CC_SF_ERR': .3,  # 0.3,  # prelim ddb SF
-#     },
-#     "2016": {
-#         'V_SF': 0.895,
-#         'V_SF_ERR': 0.024,
-#         'shift_SF': 0.988,
-#         'shift_SF_ERR': 0.003,
-#         'smear_SF': 0.892,
-#         'smear_SF_ERR': 0.047,
-#         'W_SF': 0.897,
-#         'W_SF_ERR': 0.128,
-#         'CC_SF': 1,  # 1.0,
-#         'CC_SF_ERR': .3,  # 0.3,  # prelim ddb SF
-#     }
-# }
-
 SF = {
     "2016": {
         'V_SF': 0.875,
@@ -137,13 +97,18 @@ def shape_to_num(f, region, sName, ptbin, syst, mask, muon=False):
     if _nom_rate < .1:
         return 1.0
     _up = get_templ(f, region, sName, ptbin, syst=syst + "Up", muon=muon)
-    if _up is None:
-        return None
-    _up_rate = np.sum(_up[0] * mask)
     _down = get_templ(f, region, sName, ptbin, syst=syst + "Down", muon=muon)
-    if _down is None:
+    if _up is None and _down is None:
         return None
-    _down_rate = np.sum(_down[0] * mask)
+    else:
+        if _down is not None:
+            _down_rate = np.sum(_down[0] * mask)
+        else:
+            _down_rate = _nom_rate
+        if _up is not None:
+            _up_rate = np.sum(_up[0] * mask)
+        else:
+            _up_rate = _nom_rate
     _diff = np.abs(_up_rate - _nom_rate) + np.abs(_down_rate - _nom_rate)
     return 1.0 + _diff / (2. * _nom_rate)
 
@@ -229,34 +194,29 @@ def dummy_rhalphabet(pseudo,
     # Systematics
     sys_shape_dict = {}
     if opts.fast == 0:
-        sys_shape_dict['JES'] = rl.NuisanceParameter('CMS_scale_j_{}'.format(year), 'lnN')
-        sys_shape_dict['JER'] = rl.NuisanceParameter('CMS_res_j_{}'.format(year), 'lnN')
-        sys_shape_dict['UES'] = rl.NuisanceParameter('CMS_ues_j_{}'.format(year), 'lnN')
-        sys_shape_dict['jet_trigger'] = rl.NuisanceParameter('CMS_gghcc_trigger_{}'.format(year), 'lnN')
-        sys_shape_dict['mu_trigger'] = rl.NuisanceParameter('CMS_mu_trigger_{}'.format(year), 'lnN')
-        sys_shape_dict['mu_isoweight'] = rl.NuisanceParameter('CMS_mu_isoweight_{}'.format(year), 'lnN')
-        sys_shape_dict['mu_idweight'] = rl.NuisanceParameter('CMS_mu_idweight_{}'.format(year), 'lnN')
-        sys_shape_dict['pileup_weight'] = rl.NuisanceParameter('CMS_gghcc_PU_{}'.format(year), 'lnN')
-        for sys in ['btagEffStat', 'btagWeight', 'd1kappa_EW', 'Z_d2kappa_EW', 'Z_d3kappa_EW', 'd1K_NLO', 'd2K_NLO', 'd3K_NLO']:
-            sys_shape_dict[sys] = rl.NuisanceParameter('CMS_gghcc_{}_{}'.format(sys, year), 'lnN')
+        _shape_type = 'lnN'
     else:
-        sys_shape_dict['JES'] = rl.NuisanceParameter('CMS_scale_j_{}'.format(year), 'shape')
-        sys_shape_dict['JER'] = rl.NuisanceParameter('CMS_res_j_{}'.format(year), 'shape')
-        sys_shape_dict['UES'] = rl.NuisanceParameter('CMS_ues_j_{}'.format(year), 'shape')
-        sys_shape_dict['jet_trigger'] = rl.NuisanceParameter('CMS_gghcc_trigger_{}'.format(year), 'shape')
-        sys_shape_dict['mu_trigger'] = rl.NuisanceParameter('CMS_mu_trigger_{}'.format(year), 'shape')
-        sys_shape_dict['mu_isoweight'] = rl.NuisanceParameter('CMS_mu_isoweight_{}'.format(year), 'shape')
-        sys_shape_dict['mu_idweight'] = rl.NuisanceParameter('CMS_mu_idweight_{}'.format(year), 'shape')
-        sys_shape_dict['pileup_weight'] = rl.NuisanceParameter('CMS_gghcc_PU_{}'.format(year), 'shape')
-        for sys in ['btagEffStat', 'btagWeight', 'd1kappa_EW', 'Z_d2kappa_EW', 'Z_d3kappa_EW', 'd1K_NLO', 'd2K_NLO', 'd3K_NLO']:
-            sys_shape_dict[sys] = rl.NuisanceParameter('CMS_gghcc_{}_{}'.format(sys, year), 'shape')
-
+        _shape_type = 'shape'
+    sys_shape_dict['JES'] = rl.NuisanceParameter('CMS_scale_j_{}'.format(year), _shape_type)
+    sys_shape_dict['JER'] = rl.NuisanceParameter('CMS_res_j_{}'.format(year), _shape_type)
+    sys_shape_dict['UES'] = rl.NuisanceParameter('CMS_ues_j_{}'.format(year), _shape_type)
+    sys_shape_dict['jet_trigger'] = rl.NuisanceParameter('CMS_gghcc_trigger_{}'.format(year), _shape_type)
+    sys_shape_dict['mu_trigger'] = rl.NuisanceParameter('CMS_mu_trigger_{}'.format(year), _shape_type)
+    sys_shape_dict['mu_isoweight'] = rl.NuisanceParameter('CMS_mu_isoweight_{}'.format(year), _shape_type)
+    sys_shape_dict['mu_idweight'] = rl.NuisanceParameter('CMS_mu_idweight_{}'.format(year), _shape_type)
+    sys_shape_dict['pileup_weight'] = rl.NuisanceParameter('CMS_gghcc_PU_{}'.format(year), _shape_type)
+    sys_shape_dict['HEM18'] = rl.NuisanceParameter('CMS_gghcc_HEM_{}'.format(year), _shape_type)
+    sys_shape_dict['L1Prefiring'] = rl.NuisanceParameter('CMS_gghcc_L1prefire_{}'.format(year), _shape_type)
+    for sys in ['btagEffStat', 'btagWeight', 'd1kappa_EW', 'Z_d2kappa_EW', 'Z_d3kappa_EW', 'd1K_NLO', 'd2K_NLO', 'd3K_NLO']:
+        sys_shape_dict[sys] = rl.NuisanceParameter('CMS_gghcc_{}_{}'.format(sys, year), _shape_type)
+    
     sys_ddxeff = rl.NuisanceParameter('CMS_eff_cc_{}'.format(year), 'lnN')
     sys_ddxeffbb = rl.NuisanceParameter('CMS_eff_bb_{}'.format(year), 'lnN')
     sys_ddxeffw = rl.NuisanceParameter('CMS_eff_w_{}'.format(year), 'lnN')
 
     sys_eleveto = rl.NuisanceParameter('CMS_gghcc_e_veto_{}'.format(year), 'lnN')
     sys_muveto = rl.NuisanceParameter('CMS_gghcc_m_veto_{}'.format(year), 'lnN')
+    sys_tauveto = rl.NuisanceParameter('CMS_gghcc_tau_veto_{}'.format(year), 'lnN')
 
     sys_wznormEW = rl.NuisanceParameter('CMS_gghcc_wznormEW', 'lnN')
     sys_znormEW = rl.NuisanceParameter('CMS_gghcc_znormEW', 'lnN')
@@ -267,7 +227,6 @@ def dummy_rhalphabet(pseudo,
     sys_smear = rl.NuisanceParameter('CMS_gghcc_smear_{}'.format(year), 'shape')
 
     sys_Hpt = rl.NuisanceParameter('CMS_gghcc_ggHpt', 'lnN')
-    # sys_Hpt_shape = rl.NuisanceParameter('CMS_gghbb_ggHpt', 'shape')
 
     # Import binnings
     # Hidden away to be available to other functions
@@ -286,25 +245,25 @@ def dummy_rhalphabet(pseudo,
         if muonCR:
             f_mu = uproot.open(opts.mutemplates)
         #muonCR = False
-    elif year == "2018":
-        print("Year: 2018")
-        model_name = "temp18Model"
-        #f = uproot.open('hxx18/hist_1DZcc_pt_scalesmear.root')
-        f = uproot.open('2018v2/hist_1DZcc_pt_scalesmear.root')
-        f_mu = uproot.open('2018v2/hist_1DZcc_muonCR.root')
-    elif year == "2017":
-        print("Year: 2017")
-        model_name = "temp17Model"
-        #f = uproot.open('hxx/hist_1DZcc_pt_scalesmear.root')
-        f = uproot.open('2017v2/hist_1DZcc_pt_scalesmear.root')
-        f_mu = uproot.open('2017v2/hist_1DZcc_muonCR.root')
-    elif year == "2016":
-        print("Year: 2016")
-        model_name = "temp16Model"
-        f = uproot.open('2016v2/hist_1DZcc_pt_scalesmear.root')
-        f_mu = uproot.open('2016v2/hist_1DZcc_muonCR.root')
-    else:
-        raise ValueError("Invalid Year")
+    # elif year == "2018":
+    #     print("Year: 2018")
+    #     model_name = "temp18Model"
+    #     #f = uproot.open('hxx18/hist_1DZcc_pt_scalesmear.root')
+    #     f = uproot.open('2018v2/hist_1DZcc_pt_scalesmear.root')
+    #     f_mu = uproot.open('2018v2/hist_1DZcc_muonCR.root')
+    # elif year == "2017":
+    #     print("Year: 2017")
+    #     model_name = "temp17Model"
+    #     #f = uproot.open('hxx/hist_1DZcc_pt_scalesmear.root')
+    #     f = uproot.open('2017v2/hist_1DZcc_pt_scalesmear.root')
+    #     f_mu = uproot.open('2017v2/hist_1DZcc_muonCR.root')
+    # elif year == "2016":
+    #     print("Year: 2016")
+    #     model_name = "temp16Model"
+    #     f = uproot.open('2016v2/hist_1DZcc_pt_scalesmear.root')
+    #     f_mu = uproot.open('2016v2/hist_1DZcc_muonCR.root')
+    # else:
+    #     raise ValueError("Invalid Year")
     if opts.model is not None:
         model_name = opts.model
 
@@ -467,7 +426,7 @@ def dummy_rhalphabet(pseudo,
                 # Need minimum size & more than 1 non-zero bins
                 tot = np.sum(hvalues[mask])
                 count_nonzeros = np.sum(hvalues[mask] > 0)
-                if (tot < eps) or (count_nonzeros < 2):
+                if (tot < eps) or (count_nonzeros < 3):
                     return True
                 else:
                     return False
@@ -501,7 +460,9 @@ def dummy_rhalphabet(pseudo,
                         stype = rl.Sample.BACKGROUND
 
                 MORPHNOMINAL = True
-                def smorph(templ):                        
+                def smorph(templ):      
+                    if templ is None:
+                        return None                  
                     if MORPHNOMINAL and sName not in ['qcd', 'zll', 'wln', 'vvqq']:
                         return MorphHistW2(templ).get(shift=SF[year]['shift_SF']/smass('wcq') * smass(sName),
                                                       smear=SF[year]['smear_SF']
@@ -523,13 +484,15 @@ def dummy_rhalphabet(pseudo,
                         sample.setParamEffect(sys_lumi_1718, lumi_1718_dict[year])
                     sample.setParamEffect(sys_eleveto, 1.005)
                     sample.setParamEffect(sys_muveto, 1.005)
+                    sample.setParamEffect(sys_tauveto, 1.005)
 
                     if sName in ["qcd"]:
                         continue
 
                     sys_names = [
                         'JES', 'JER', 'UES', 'jet_trigger', 'btagEffStat', 'btagWeight', 'pileup_weight',
-                        'Z_d2kappa_EW', 'Z_d3kappa_EW', 'd1kappa_EW', 'd1K_NLO', 'd2K_NLO', 'd3K_NLO'
+                        'Z_d2kappa_EW', 'Z_d3kappa_EW', 'd1kappa_EW', 'd1K_NLO', 'd2K_NLO', 'd3K_NLO',
+                        'L1Prefiring',
                     ]
                     for sys_name in sys_names:
                         if (("NLO" in sys_name) or ("EW" in sys_name)) and not sName in ['zbb', 'zcc', 'zqq', 'wcq', 'wqq']:
@@ -560,7 +523,36 @@ def dummy_rhalphabet(pseudo,
                             if badtemp_ma(_up[0]) or badtemp_ma(_dn[0]):
                                 print("Skipping {} for sample {}, shape would be empty".format(sys_name, sName))
                                 continue
+                            # if ptbin == 1:
+                            #     sys.exit()
+                            # if sName == 'zll' and sys_name == 'btagEffStat':
+                            #     continue
+                            # if sName == 'tqq' and sys_name == 'btagEffStat':
+                            #     print("XXXX", np.sum(_up[0]), np.sum(_dn[0]))
+                            #     print(_up[0])
+                            #     print(_dn[0])
                             sample.setParamEffect(sys_shape_dict[sys_name], _up[0], _dn[0])
+                    # One sided
+                    for sys_name in ['HEM18']:
+                        if opts.fast == 0:  # Convert to lnN for faster fitting
+                            _sys_ef = shape_to_num(f, region, sName, ptbin,
+                                                    sys_name, mask)
+                            if _sys_ef is None:
+                                continue
+                            sample.setParamEffect(sys_shape_dict[sys_name], _sys_ef)
+                        else:                            
+                            _up = get_templ(f,
+                                            region,
+                                            sName,
+                                            ptbin,
+                                            syst=sys_name + "Up")
+                            _up = smorph(_up)
+                            if _up is None:
+                                continue
+                            if badtemp_ma(_up[0]):
+                                print("Skipping {} for sample {}, shape would be empty".format(sys_name, sName))
+                                continue
+                            sample.setParamEffect(sys_shape_dict[sys_name], _up[0])
 
                     if opts.mcstat and sName not in ['qcd']:
                         if opts.fast < 2:  # Convert to lnN for faster fitting
@@ -749,23 +741,27 @@ def dummy_rhalphabet(pseudo,
                 if not systs:  # Need at least one
                     sample.setParamEffect(sys_lumi, 1.023)
                 else:
-                    sample.setParamEffect(sys_lumi, 1.023)
+                    sample.setParamEffect(sys_lumi, lumi_dict[year])
+                    sample.setParamEffect(sys_lumi_correlated, lumi_correlated_dict[year])
+                    if year != '2016':
+                        sample.setParamEffect(sys_lumi_1718, lumi_1718_dict[year])
                     sample.setParamEffect(sys_eleveto, 1.005)
-                    sample.setParamEffect(sys_muveto, 1.005)
+                    sample.setParamEffect(sys_tauveto, 1.005)
 
                     if sName in ["qcd"]:
                         continue
 
                     sys_names = [
                         'JES', 'JER', 'UES', 'mu_trigger', 'mu_isoweight', 'mu_idweight', 'btagEffStat', 'btagWeight', 'pileup_weight',
-                        'Z_d2kappa_EW', 'Z_d3kappa_EW', 'd1kappa_EW', 'd1K_NLO', 'd2K_NLO', 'd3K_NLO'
+                        'Z_d2kappa_EW', 'Z_d3kappa_EW', 'd1kappa_EW', 'd1K_NLO', 'd2K_NLO', 'd3K_NLO',
+                        'L1Prefiring',
                     ]
                     for sys_name in sys_names:
                         if (("NLO" in sys_name) or ("EW" in sys_name)) and not sName in ['zbb', 'zcc', 'zqq', 'wcq', 'wqq']:
                             continue
                         if ("Z_d" in sys_name) and sName not in ['zbb', 'zcc', 'zqq']:
                             continue
-                        if opts.fast == 0 or collapse:  # Convert to lnN for faster fitting
+                        if opts.fast == 0:  # Convert to lnN for faster fitting
                             _sys_ef = shape_to_num(f_mu, region, sName, ptbin,
                                                     sys_name, mask, muon=True)
                             if _sys_ef is None:
@@ -789,6 +785,9 @@ def dummy_rhalphabet(pseudo,
                             if badtemp_ma(_up[0]) or badtemp_ma(_dn[0]):
                                 print("Skipping {} for sample {}, shape would be empty".format(sys_name, sName))
                                 continue
+                            if collapse:
+                                _up = one_bin(_up)
+                                _dn = one_bin(_dn)
                             sample.setParamEffect(sys_shape_dict[sys_name], _up[0], _dn[0])
 
                     if opts.mcstat and sName not in ['qcd'] and not collapse:
