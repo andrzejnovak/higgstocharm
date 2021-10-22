@@ -46,6 +46,7 @@ cd higgstocharm
 # Must chose --data or --MC, other options get printed
 # python new_Hxx.py --data --unblind --year 2017 --templates n2nano/templates_nskim17_CC.root -o Test17
 python new_Hxx.py --data --unblind --year 2017 -t tau/templates_new17_CC.root -o Test17 --degs 0,0 --fast 1
+python new_Hxx.py --data --unblind --year 2016 -t temps/templates_preapp16_CC.root --mut temps/templatesmuCR_preapp16_CC.root -o Test16 --degs 0,1 
 ```
 
 ## Fitting
@@ -53,7 +54,7 @@ python new_Hxx.py --data --unblind --year 2017 -t tau/templates_new17_CC.root -o
 ### Building workspace commands
 ```
 bash build.sh
-text2workspace.py -P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel  --PO verbose --PO 'map=.*/*hcc*:r[1,-500,500]' --PO 'map=.*/zcc:z[1,-5,5]' model_combined.txt
+# text2workspace.py -P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel  --PO verbose --PO 'map=.*/*hcc*:r[1,-500,500]' --PO 'map=.*/zcc:z[1,-5,5]' model_combined.txt
 # text2workspace.py -P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel  --PO verbose --PO 'map=.*/*hcc*:r[1,-500,500]' model_combined.txt
 # text2workspace.py -P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel  --PO verbose --PO 'map=.*/zcc:r[1,-5,5]' model_combined.txt
 

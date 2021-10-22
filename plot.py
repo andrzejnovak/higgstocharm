@@ -610,6 +610,7 @@ if __name__ == '__main__':
                 if not args.run_all: continue
                 cat_name = 'shapes_{}/ptbin{}{}{};1'.format(shape_type, i, region,
                                                             args.year)
+                print([cat_name])
                 try:
                     cat = f[cat_name]
                 except Exception:

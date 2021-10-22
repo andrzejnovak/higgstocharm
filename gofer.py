@@ -18,11 +18,20 @@ if __name__ == "__main__":
     parser.add_argument('--collect', action='store_true', help='')
     parser.add_argument('--plot', action='store_true', help='')
     parser.add_argument('--year', type=str, default=None, help="Year to display on plots.")
+    parser.add_argument('-p', '--param', type=str, choices=['bern', 'cheby', 'exp'], default='bern',
+                        help="Parametrization")
     args = parser.parse_args()
 
     dname = args.dname
     print("X", dname)
     start = time.time()
+
+    if args.param == 'cheby':
+        basis = ' --basis Bernstein,Chebyshev'
+    elif args.param == 'exp':
+        basis = ' --basis Bernstein,Bernstein --transform '
+    else:
+        basis = " "
 
     if args.make:
         # Made workspaces
@@ -33,6 +42,7 @@ if __name__ == "__main__":
                         "python new_Hxx.py --MC --year {year} --templates tau/templates_ref{yearshort}_CC.root -o {dname}{p}{r} --degs {p},{r} "
                         " --justZ True --muCR False --MCTF False --muCR False --systs False --scale False --smear False --unblind "
                         .format(year=args.year, yearshort=args.year[-2:], dname=dname, p=str(pt), r=str(rho))
+                        + basis
                     ) 
                 else:
                     os.system(
@@ -40,6 +50,7 @@ if __name__ == "__main__":
                         "--mutemplates reft/templatesmuCR_ref{yearshort}_CC.root  --muCR True"
                         .format(year=args.year, yearshort=args.year[-2:], dname=dname, p=str(pt), r=str(rho))
                         + (" --unblind " if not args.blind else "")
+                        + basis
                     )
 
     N = 3
@@ -112,7 +123,8 @@ if __name__ == "__main__":
         for pt in range(0, 3):
             for rho in range(0, 3):
                 print("X", pt, rho)
-                os.system("python fplots.py {}{}{}  --year {} --out {}".format(dname, str(pt), str(rho), args.year, 'plots_{}'.format(dname)))
+                # os.system("python fplots.py {}{}{}  --year {} --out {}".format(dname, str(pt), str(rho), args.year, 'plots_{}'.format(dname)))
+                os.system("python plot_ftest.py {}{}{}  --year {} -d {}".format(dname, str(pt), str(rho), args.year, 'plots_{}'.format(dname)))
 
     print("Done")
     end = time.time()
