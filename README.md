@@ -46,7 +46,7 @@ cd higgstocharm
 # Must chose --data or --MC, other options get printed
 # python new_Hxx.py --data --unblind --year 2017 --templates n2nano/templates_nskim17_CC.root -o Test17
 python new_Hxx.py --data --unblind --year 2017 -t tau/templates_new17_CC.root -o Test17 --degs 0,0 --fast 1
-python new_Hxx.py --data --unblind --year 2016 -t temps/templates_preapp16_CC.root --mut temps/templatesmuCR_preapp16_CC.root -o Test16 --degs 0,1 
+python new_Hxx.py --data --unblind --year 2016 -t temps/templates_corr16_CC.root --mut temps/templatesmuCR_corr16_CC.root -o Correct16 --degs 2,0
 ```
 
 ## Fitting

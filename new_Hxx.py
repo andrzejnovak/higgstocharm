@@ -89,7 +89,7 @@ def passfailSF(f, region, sName, ptbin, mask, SF=1, SF_unc=0.1, muon=False):
             return 1, 1
 
 
-def shape_to_num(f, region, sName, ptbin, syst, mask, muon=False):
+def shape_to_num(f, region, sName, ptbin, syst, mask, muon=False, bound=0.5):
     _nom = get_templ(f, region, sName, ptbin, muon=muon)
     if _nom is None:
         return None
@@ -110,8 +110,10 @@ def shape_to_num(f, region, sName, ptbin, syst, mask, muon=False):
         else:
             _up_rate = _nom_rate
     _diff = np.abs(_up_rate - _nom_rate) + np.abs(_down_rate - _nom_rate)
-    return 1.0 + _diff / (2. * _nom_rate)
-
+    magnitude = _diff / (2. * _nom_rate)
+    if bound is not None:
+        magnitude = min(magnitude, bound)
+    return 1.0 + magnitude
 
 def get_templ(f, region, sample, ptbin, syst=None, muon=False):
     hist_name = '{}_{}'.format(sample, region)
@@ -207,9 +209,12 @@ def dummy_rhalphabet(pseudo,
     sys_shape_dict['pileup_weight'] = rl.NuisanceParameter('CMS_gghcc_PU_{}'.format(year), _shape_type)
     sys_shape_dict['HEM18'] = rl.NuisanceParameter('CMS_gghcc_HEM_{}'.format(year), _shape_type)
     sys_shape_dict['L1Prefiring'] = rl.NuisanceParameter('CMS_gghcc_L1prefire_{}'.format(year), _shape_type)
+    sys_shape_dict['scalevar_7pt'] = rl.NuisanceParameter('CMS_gghcc_th_scale7pt', _shape_type)
+    sys_shape_dict['scalevar_3pt'] = rl.NuisanceParameter('CMS_gghcc_th_scale3pt', _shape_type)
+
     for sys in ['btagEffStat', 'btagWeight', 'd1kappa_EW', 'Z_d2kappa_EW', 'Z_d3kappa_EW', 'd1K_NLO', 'd2K_NLO', 'd3K_NLO']:
         sys_shape_dict[sys] = rl.NuisanceParameter('CMS_gghcc_{}_{}'.format(sys, year), _shape_type)
-    
+
     sys_ddxeff = rl.NuisanceParameter('CMS_eff_cc_{}'.format(year), 'lnN')
     sys_ddxeffbb = rl.NuisanceParameter('CMS_eff_bb_{}'.format(year), 'lnN')
     sys_ddxeffw = rl.NuisanceParameter('CMS_eff_w_{}'.format(year), 'lnN')
@@ -226,7 +231,8 @@ def dummy_rhalphabet(pseudo,
     sys_scale = rl.NuisanceParameter('CMS_gghcc_scale_{}'.format(year), 'shape')
     sys_smear = rl.NuisanceParameter('CMS_gghcc_smear_{}'.format(year), 'shape')
 
-    sys_Hpt = rl.NuisanceParameter('CMS_gghcc_ggHpt', 'lnN')
+    # sys_ggHpt = rl.NuisanceParameter('CMS_gghcc_th_scale7pt', 'lnN')
+    # sys_VBFpt = rl.NuisanceParameter('CMS_gghcc_th_scale3pt', 'lnN')
 
     # Import binnings
     # Hidden away to be available to other functions
@@ -492,16 +498,21 @@ def dummy_rhalphabet(pseudo,
                     sys_names = [
                         'JES', 'JER', 'UES', 'jet_trigger', 'btagEffStat', 'btagWeight', 'pileup_weight',
                         'Z_d2kappa_EW', 'Z_d3kappa_EW', 'd1kappa_EW', 'd1K_NLO', 'd2K_NLO', 'd3K_NLO',
-                        'L1Prefiring',
+                        'L1Prefiring', 
+                        'scalevar_7pt', 'scalevar_3pt',
                     ]
                     for sys_name in sys_names:
                         if (("NLO" in sys_name) or ("EW" in sys_name)) and not sName in ['zbb', 'zcc', 'zqq', 'wcq', 'wqq']:
                             continue
                         if ("Z_d" in sys_name) and sName not in ['zbb', 'zcc', 'zqq']:
                             continue
+                        if sys_name == 'scalevar_7pt' and sName not in ['hcc', 'hbb']:
+                            continue
+                        if sys_name == 'scalevar_3pt' and sName not in ['vbfhcc', 'vbfhbb', 'whcc', 'zhcc', 'whbb', 'zhbb']:
+                            continue
                         if opts.fast == 0:  # Convert to lnN for faster fitting
                             _sys_ef = shape_to_num(f, region, sName, ptbin,
-                                                    sys_name, mask)
+                                                    sys_name, mask, bound=None if 'scalevar' not in sys_name else 0.25)
                             if _sys_ef is None:
                                 continue
                             sample.setParamEffect(sys_shape_dict[sys_name], _sys_ef)
@@ -523,14 +534,6 @@ def dummy_rhalphabet(pseudo,
                             if badtemp_ma(_up[0]) or badtemp_ma(_dn[0]):
                                 print("Skipping {} for sample {}, shape would be empty".format(sys_name, sName))
                                 continue
-                            # if ptbin == 1:
-                            #     sys.exit()
-                            # if sName == 'zll' and sys_name == 'btagEffStat':
-                            #     continue
-                            # if sName == 'tqq' and sys_name == 'btagEffStat':
-                            #     print("XXXX", np.sum(_up[0]), np.sum(_dn[0]))
-                            #     print(_up[0])
-                            #     print(_dn[0])
                             sample.setParamEffect(sys_shape_dict[sys_name], _up[0], _dn[0])
                     # One sided
                     for sys_name in ['HEM18']:
@@ -584,8 +587,10 @@ def dummy_rhalphabet(pseudo,
                                                  SF[year]['W_SF'], SF[year]['W_SF_ERR'])
                         sample.scale(_sf)
                         sample.setParamEffect(sys_ddxeffw, _sfunc)
-                    if sName == 'hcc':
-                        sample.setParamEffect(sys_Hpt, 1.2)
+                    # if sName == 'hcc':
+                    #     sample.setParamEffect(sys_ggHpt, 1.2)
+                    # if sName == 'hcc':
+                    #     sample.setParamEffect(sys_VBFpt, 1.2)
 
                 # Scale and Smear
                 mtempl = AffineMorphTemplate(templ)
