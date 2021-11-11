@@ -59,7 +59,7 @@ bash build.sh
 # text2workspace.py -P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel  --PO verbose --PO 'map=.*/zcc:r[1,-5,5]' model_combined.txt
 
 combine -M FitDiagnostics --expectSignal 1 -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 -t -1 --toysFrequentist 
-combine -M FitDiagnostics --expectSignal 1 -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 --saveShapes --saveWithUncertainties -t -1 --toysFrequentist --setParameters z=1
+combine -M FitDiagnostics --expectSignal 1 -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 --saveShapes --saveWithUncertainties -t -1 --toysFrequentist --setParameters z=1 -n ""
 combine -M Significance model_combined.root --expectSignal 1 --redefineSignalPOIs z -t -1 --toysFrequentist
 combineTool.py -M AsymptoticLimits -m 125 -d model_combined.root --expectSignal 1 --setParameters z=1 --redefineSignalPOIs r -t -1 --toysFrequentist 
 python ../../../HiggsAnalysis/CombinedLimit/test/diffNuisances.py fitDiagnostics.root 
@@ -80,7 +80,7 @@ combineTool.py -M Impacts -d model_combined.root -m 125 --doInitialFit --robustF
 combineTool.py -M Impacts -d model_combined.root -m 125 --doFits --robustFit 1 --allPars --setParameterRanges r=-1,5  -t -1 --toysFrequentist --expectSignal 1 --redefineSignalPOIs z --cminDefaultMinimizerStrategy 0 --X-rtd MINIMIZER_analytic --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHccZ --exclude 'rgx{qcdparams*}'
 # Collect
 combineTool.py -M Impacts -d model_combined.root -m 125 --redefineSignalPOIs z -o impactsZ.json
-plotImpacts.py -i impactsZ.json -o plots/impacts_out_Z --blind
+plotImpacts.py -i impactsZ.json -o plots/impacts_out_Z
 ```
 
 Fitting H
