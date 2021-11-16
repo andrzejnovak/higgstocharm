@@ -96,26 +96,35 @@ def shape_to_num(f, region, sName, ptbin, syst, mask, muon=False, bound=0.5):
     _nom_rate = np.sum(_nom[0] * mask)
     if _nom_rate < .1:
         return 1.0
+
+    _one_side = get_templ(f, region, sName, ptbin, syst=syst, muon=muon)
     _up = get_templ(f, region, sName, ptbin, syst=syst + "Up", muon=muon)
     _down = get_templ(f, region, sName, ptbin, syst=syst + "Down", muon=muon)
-    if _up is None and _down is None:
+    if _up is None and _down is None and _one_side is None:
         return None
     else:
-        if _down is not None:
-            _down_rate = np.sum(_down[0] * mask)
-        else:
-            _down_rate = _nom_rate
-        if _up is not None:
+        if _one_side is not None:
+            _up_rate = np.sum(_one_side[0] * mask)            
+            _diff = np.abs(_up_rate - _nom_rate)
+            magnitude = _diff / _nom_rate
+        elif _down is not None and _up is not None:
             _up_rate = np.sum(_up[0] * mask)
+            _down_rate = np.sum(_down[0] * mask)
+            _diff = np.abs(_up_rate - _nom_rate) + np.abs(_down_rate - _nom_rate)
+            magnitude = _diff / (2. * _nom_rate)
         else:
-            _up_rate = _nom_rate
-    _diff = np.abs(_up_rate - _nom_rate) + np.abs(_down_rate - _nom_rate)
-    magnitude = _diff / (2. * _nom_rate)
+            raise NotImplementedError
     if bound is not None:
         magnitude = min(magnitude, bound)
     return 1.0 + magnitude
 
 def get_templ(f, region, sample, ptbin, syst=None, muon=False):
+    if "16" in f.name:
+        year = 2016
+    elif "17" in f.name:
+        year = 2017
+    else:
+        year = 2018
     hist_name = '{}_{}'.format(sample, region)
     if syst is not None:
         hist_name += "_" + syst
@@ -126,8 +135,16 @@ def get_templ(f, region, sample, ptbin, syst=None, muon=False):
     try:
         f[hist_name]
     except:
-        print("{}Sample {}, {}, {}, {} not found.".format('(Muon) ' if muon else "",
-            sample, region, ptbin if not muon else "-", syst))
+        if syst is not None:
+            if "HEM" in syst and year in [2016, 2017]:  # always empty
+                pass
+            elif "HEM" in syst and ("Up" in syst or "Down" in syst) and year == 2018:  # always empty
+                pass
+            elif "L1Prefiring" in syst and year == 2018:  # always empty
+                pass
+            else:
+                print("{}Sample {}, {}, {}, {} not found.".format('(Muon) ' if muon else "",
+                    sample, region, ptbin if not muon else "-", syst))
         return None
     h_vals = f[hist_name].values
     h_edges = f[hist_name].edges
@@ -171,6 +188,9 @@ def dummy_rhalphabet(pseudo,
                      runboth=False,
                      year=2017,
                      opts=None):
+
+    print(year)
+    assert year in ['2016', '2017', '2018']
 
     # Default lumi (needs at least one systematics for prefit)
     sys_lumi = rl.NuisanceParameter('CMS_lumi_13TeV_{}'.format(year), 'lnN')
@@ -389,7 +409,6 @@ def dummy_rhalphabet(pseudo,
 
     for ptbin in range(npt):
         for region in ['pass', 'fail']:
-            #ch = rl.Channel("ptbin%d%s" % (ptbin, region))
             ch = rl.Channel("ptbin{}{}{}".format(ptbin, region, year))
             model.addChannel(ch)
             if justZ:
@@ -952,13 +971,6 @@ if __name__ == '__main__':
                         help="Only run H and Z sample with QCD")
 
     parser.add_argument("--year", type=int, default=2017, help="Year")
-
-    parser.add_argument("--matched",
-                        type=str2bool,
-                        default='False',
-                        choices={True, False},
-                        help=("Use matched/unmatched templates"
-                              "(w/o there is some W/Z/H contamination from QCD)"))
 
     parser.add_argument("--mcstat",
                         type=str2bool,
