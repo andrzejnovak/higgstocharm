@@ -242,17 +242,6 @@ if __name__ == '__main__':
     # Set to values from fit
     tf_res.update_from_roofit(rf.Get('fit_s'))
     par_names = rf.Get('fit_s').floatParsFinal().contentsString().split(',')
-    MC_nuis = [round(rf.Get('fit_s').floatParsFinal().find(p).getVal(), 3) for p in par_names if 'tf{}_MCtempl'.format(args.year) in p]
-    _vect = np.load(os.path.join(args.dir, 'decoVector.npy'))
-    _MCTF_nominal = np.load(os.path.join(args.dir, 'MCTF.npy'))
-    _values = _vect.dot(np.array(MC_nuis)) + _MCTF_nominal
-    tf_MC.set_parvalues(_values)
-
-    ax = singleTF(tf_MC, rho=args.rho)
-    ax.set_title("Tagger Response TF", x=0, ha='left', fontsize='small')
-    hep.cms.label(ax=ax, loc=2, year=args.year)
-    ax.figure.savefig('{}/TF_MC.png'.format(args.output_folder), dpi=300, bbox_inches="tight")
-    ax.figure.savefig('{}/TF_MC.pdf'.format(args.output_folder), transparent=True, bbox_inches="tight")
 
     ax = singleTF(tf_res, rho=args.rho)
     ax.set_title("Residual (Data/MC) TF", x=0, ha='left', fontsize='small')
@@ -260,11 +249,26 @@ if __name__ == '__main__':
     ax.figure.savefig('{}/TF_data.png'.format(args.output_folder), dpi=300, bbox_inches="tight")
     ax.figure.savefig('{}/TF_data.pdf'.format(args.output_folder), transparent=True, bbox_inches="tight")
 
-    ax = combinedTF(tf_MC, tf_res, rho=args.rho)
-    ax.set_title("Effective Transfer Factor", x=0, ha='left', fontsize='small')
-    hep.cms.label(ax=ax, loc=2, year=args.year)
-    ax.figure.savefig('{}/TF_eff.png'.format(args.output_folder), dpi=300, bbox_inches="tight")
-    ax.figure.savefig('{}/TF_eff.pdf'.format(args.output_folder), transparent=True, bbox_inches="tight")
+    try:
+        MC_nuis = [round(rf.Get('fit_s').floatParsFinal().find(p).getVal(), 3) for p in par_names if 'tf{}_MCtempl'.format(args.year) in p]
+        _vect = np.load(os.path.join(args.dir, 'decoVector.npy'))
+        _MCTF_nominal = np.load(os.path.join(args.dir, 'MCTF.npy'))
+        _values = _vect.dot(np.array(MC_nuis)) + _MCTF_nominal
+        tf_MC.set_parvalues(_values)
+
+        ax = singleTF(tf_MC, rho=args.rho)
+        ax.set_title("Tagger Response TF", x=0, ha='left', fontsize='small')
+        hep.cms.label(ax=ax, loc=2, year=args.year)
+        ax.figure.savefig('{}/TF_MC.png'.format(args.output_folder), dpi=300, bbox_inches="tight")
+        ax.figure.savefig('{}/TF_MC.pdf'.format(args.output_folder), transparent=True, bbox_inches="tight")
+
+        ax = combinedTF(tf_MC, tf_res, rho=args.rho)
+        ax.set_title("Effective Transfer Factor", x=0, ha='left', fontsize='small')
+        hep.cms.label(ax=ax, loc=2, year=args.year)
+        ax.figure.savefig('{}/TF_eff.png'.format(args.output_folder), dpi=300, bbox_inches="tight")
+        ax.figure.savefig('{}/TF_eff.pdf'.format(args.output_folder), transparent=True, bbox_inches="tight")
+    except:
+        print("Didn't find MCTF")
 
 
     f = uproot3.open(os.path.join(args.dir, args.fit))

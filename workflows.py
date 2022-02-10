@@ -455,7 +455,7 @@ class CombineWorkflows:
 
         if not parsed_args.condor or parsed_args.collect:
             command_string += exec_bash("hadd -f gofsbase.root higgsCombineGoFs.GoodnessOfFit*root", debug)
-            command_string += exec_bash("rm higgsCombineGoFs.GoodnessOfFit*root", debug)
+            # command_string += exec_bash("rm higgsCombineGoFs.GoodnessOfFit*root", debug)
 
         command_string += exec_bash("", debug)
 
@@ -507,7 +507,7 @@ class CombineWorkflows:
 
         if not parsed_args.condor or parsed_args.collect:                  
             command_string += exec_bash("hadd -f gofsalt.root higgsCombineGoFsAlt.GoodnessOfFit*root", debug)
-            command_string += exec_bash("rm higgsCombineGoFsAlt.GoodnessOfFit*root", debug)
+            # command_string += exec_bash("rm higgsCombineGoFsAlt.GoodnessOfFit*root", debug)
 
         command_string += exec_bash("cd " + self.modeldir + "\n", debug)
 

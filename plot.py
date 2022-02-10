@@ -19,8 +19,6 @@ import mplhep as hep
 plt.style.use([hep.cms.style.ROOT, {'font.size': 24}])
 plt.switch_backend('agg')
 
-pbins = [450, 500, 550, 600, 675, 800, 1200]
-
 cdict = {
     'hqq': '#6479B9',
     'hbb': '#6479B9',
@@ -136,7 +134,7 @@ def full_plot(
         if mask and not pseudo:
             _y = y
             _y[10:14] = np.nan
-            _y[6:9] = np.nan
+            # _y[6:9] = np.nan
         else:
             _y = y
 
@@ -266,7 +264,7 @@ def full_plot(
             if np.sum(abs(h)) > 30:
                 scaleH = False
             else:
-                h = h * 100
+                h = h * 10
             plot_step(bins, h, ax=ax, label=mc, linestyle='--')
 
     # Stack plots
@@ -372,7 +370,7 @@ def full_plot(
             if len(res) == 0:
                 continue
             bins, h = res[:, 0][0], np.sum(res[:, 1], axis=0)
-            plot_step(bins, 100 * h / _scale_for_mc, ax=rax, label=mc, linestyle='--')
+            plot_step(bins, 10 * h / _scale_for_mc, ax=rax, label=mc, linestyle='--')
 
     ############
     # Style
@@ -470,7 +468,7 @@ def full_plot(
 
     # Leg sort
     if scaleH:
-        label_dict['hcc'] = "$\mathrm{H(c\\bar{c})}$ x 100"
+        label_dict['hcc'] = "$\mathrm{H(c\\bar{c})}$ x 10"
         #label_dict['hqq'] = "$\mathrm{H(b\\bar{b})}$ x 500"
         #label_dict['hbb'] = "$\mathrm{H(b\\bar{b})}$ x 500"
     else:
@@ -497,7 +495,11 @@ def full_plot(
     name = str(lab_reg) + _iptname
 
     if args:
-        fig.savefig('{}/{}.{}'.format(args.output_folder, fittype + "_" + name, format),
+        # fig.savefig('{}/{}_{}.{}'.format(args.output_folder, str(year), fittype + "_" + name, format),
+        save_name = [year] if not run2 else []
+        save_name += [fittype, name]
+        save_name = "_".join(save_name)
+        fig.savefig('{}/{}.{}'.format(args.output_folder, save_name, format),
                 bbox_inches="tight")
 
 
@@ -552,7 +554,7 @@ if __name__ == '__main__':
                         type=str2bool,
                         default='True',
                         choices={True, False},
-                        help="Scale Higgs signal in plots by 100")
+                        help="Scale Higgs signal in plots by 10")
 
     parser.add_argument("--filled",
                         type=str2bool,
@@ -579,9 +581,14 @@ if __name__ == '__main__':
         args.output_folder = os.path.join(args.dir, args.output_folder)
 
     if not args.run2:
-        configs = json.load(open("config.json"))
         if args.year is None:
+            configs = json.load(open("config.json"))
             args.year = str(configs['year'])
+    
+    if args.year == "2017":
+        pbins = [475, 500, 550, 600, 675, 800, 1200]
+    else:
+        pbins = [450, 500, 550, 600, 675, 800, 1200]
 
     make_dirs(args.output_folder)
 
@@ -597,7 +604,6 @@ if __name__ == '__main__':
     # f = uproot.open(os.path.join(args.dir, args.input))
     f = uproot.open(args.input)
     for shape_type in shape_types:
-        pbins = [450, 500, 550, 600, 675, 800, 1200]
         if args.inputonly:
             continue
         for region in regions:
@@ -700,7 +706,6 @@ if __name__ == '__main__':
     if args.toys or not args.pseudo:
         input_pseudo = False
     for shape_type in ["inputs"]:
-        pbins = [450, 500, 550, 600, 675, 800, 1200]
         for region in regions:
             print("Plotting inputs", region)
             _mask = not input_pseudo

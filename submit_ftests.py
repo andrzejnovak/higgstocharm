@@ -111,7 +111,7 @@ if __name__ == '__main__':
 
 
     if args.plot:
-        base_cmd = "python new_plot_ftests.py -o {} --year {} {} ".format(args.outplots, args.year, "--mc" if args.mc else "--data")
+        base_cmd = "python new_plot_ftests.py -o {} --year {} {} ".format(args.outplots, args.year, "--mc" if args.mc else "")
         if args.mc:
             base_cmd += " --qplots "
         for i in range(4):

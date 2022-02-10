@@ -67,6 +67,7 @@ def fplot(dname, ref, alt, year=2017, savename='fplotX', nbins=130):
 
     path = '{dname}/bkgtest_{ref_pt}-{ref_rho}_{alt_pt}-{alt_rho}'.format(
             dname=dname, ref_pt=ref_pt, ref_rho=ref_rho, alt_pt=alt_pt, alt_rho=alt_rho)
+    print("X", path)
     base_dict = skim_gofs(get_names(path))
     alt_dict = skim_gofs(get_names(path, alt=True))
 
@@ -82,12 +83,13 @@ def fplot(dname, ref, alt, year=2017, savename='fplotX', nbins=130):
 
     if len(alt) != len(base):
         raise ValueError("Number of toys for base and ref does not match.")
-    fvals = fval(base, alt, 2, 3, nbins)
+    fvals = fval(base, alt, p1, p2, nbins)
     f_data = fval(get_vals('{dname}/bkgtest_{ref_pt}-{ref_rho}_{alt_pt}-{alt_rho}/refbase.root'
                            .format(dname=dname, ref_pt=ref_pt, ref_rho=ref_rho, alt_pt=alt_pt, alt_rho=alt_rho)),
                   get_vals('{dname}/bkgtest_{ref_pt}-{ref_rho}_{alt_pt}-{alt_rho}/refalt.root'
                            .format(dname=dname, ref_pt=ref_pt, ref_rho=ref_rho, alt_pt=alt_pt, alt_rho=alt_rho)),
-                  2, 3, nbins)[0]
+                  p1, p2, nbins)[0]
+    print(f_data)
 
     from scipy.stats import f
     x_lim = max(np.percentile(fvals, 90), f_data*1.2)

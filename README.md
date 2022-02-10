@@ -46,7 +46,9 @@ cd higgstocharm
 # Must chose --data or --MC, other options get printed
 # python new_Hxx.py --data --unblind --year 2017 --templates n2nano/templates_nskim17_CC.root -o Test17
 python new_Hxx.py --data --unblind --year 2017 -t tau/templates_new17_CC.root -o Test17 --degs 0,0 --fast 1
-python new_Hxx.py --data --unblind --year 2016 -t temps/templates_corr16_CC.root --mut temps/templatesmuCR_corr16_CC.root -o Correct16 --degs 2,0
+python new_Hxx.py --data --unblind --year 2016 -t temps/templates_corr16_CC.root --mut temps/templatesmuCR_corr16_CC.root -o Correct16 --degs 1,0
+
+python new_Hxx.py --data --unblind --year 2016 -t temps/templates_corr16_CC.root --mut temps/templatesmuCR_corr16_CC.root -o Unblind16mod --degs 1,0
 ```
 
 ## Fitting
@@ -58,9 +60,8 @@ bash build.sh
 # text2workspace.py -P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel  --PO verbose --PO 'map=.*/*hcc*:r[1,-500,500]' model_combined.txt
 # text2workspace.py -P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel  --PO verbose --PO 'map=.*/zcc:r[1,-5,5]' model_combined.txt
 
-combine -M FitDiagnostics -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 
---setParameters z=1,r=1 -n "" -t -1 --toysFrequentist 
-combine -M FitDiagnostics --expectSignal 1 -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 --saveShapes --saveWithUncertainties -t -1 --toysFrequentist --setParameters z=1 -n ""
+combine -M FitDiagnostics -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1  --setParameters z=1,r=1 -n "" -t -1 --toysFrequentist 
+combine -M FitDiagnostics --expectSignal 1 -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1 --saveShapes --saveWithUncertainties -n "" -t -1 --toysFrequentist --setParameters z=1 
 combine -M Significance model_combined.root --expectSignal 1 --redefineSignalPOIs z -t -1 --toysFrequentist
 combineTool.py -M AsymptoticLimits -m 125 -d model_combined.root --expectSignal 1 --setParameters z=1 --redefineSignalPOIs r -t -1 --toysFrequentist 
 python ../../../HiggsAnalysis/CombinedLimit/test/diffNuisances.py fitDiagnostics.root 
@@ -87,9 +88,9 @@ plotImpacts.py -i impactsZ.json -o plots/impacts_out_Z
 Fitting Z unblinding
 ```
 # Baseline
-combineTool.py -M Impacts -d model_combined.root -m 125 --doInitialFit --robustFit 1 --setParameterRanges r=-1,5 --cminDefaultMinimizerStrategy 0 --X-rtd FITTER_DYN_STEP --expectSignal 1 --redefineSignalPOIs z
+combineTool.py -M Impacts -d model_combined.root -m 125 --doInitialFit --robustFit 1 --setParameterRanges r=-100,100 --cminDefaultMinimizerStrategy 0 --X-rtd FITTER_DYN_STEP --expectSignal 1 --redefineSignalPOIs z
 # Condor
-combineTool.py -M Impacts -d model_combined.root -m 125 --doFits --robustFit 1 --allPars --setParameterRanges r=-1,5  --redefineSignalPOIs z --cminDefaultMinimizerStrategy 0 --X-rtd MINIMIZER_analytic --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHccZ --exclude 'rgx{qcdparams*}'
+combineTool.py -M Impacts -d model_combined.root -m 125 --doFits --robustFit 1 --allPars --setParameterRanges r=-100,100  --redefineSignalPOIs z --cminDefaultMinimizerStrategy 0 --X-rtd MINIMIZER_analytic --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHccZ --exclude 'rgx{qcdparams*}'
 # Collect
 combineTool.py -M Impacts -d model_combined.root -m 125 --redefineSignalPOIs z -o impactsZunbl.json
 plotImpacts.py -i impactsZunbl.json -o plots/impacts_out_Zunbl --blind
@@ -160,7 +161,47 @@ tf2017_MCtempl_deco0=1.62,tf2017_MCtempl_deco1=-5.34e-02,tf2017_MCtempl_deco2=-1
 
 ### Running likelihood scan
 ```
-combineTool.py -M MultiDimFit -d model_combined.root --cminDefaultMinimizerStrategy 0 --expectSignal 1 --robustFit 1 --algo grid --points 40 --setParameterRanges r=-20,20 -m 125 -t -1 --toysFrequentist
+combineTool.py -M MultiDimFit -d model_combined.root --cminDefaultMinimizerStrategy 0 --expectSignal 1 --robustFit 1 --algo grid --points 40 --setParameterRanges z=0.2,1.8 -m 125 --redefineSignalPOIs=z
+plot1DScan.py higgsCombine.Test.MultiDimFit.mH125.root -o plots/LScan_data_Z_unbl --y-max 10 --y-cut 10 --POI=z
 
-plot1DScan.py higgsCombine.Test.MultiDimFit.mH125.root -o plots/LScan_data_Zexp1 --y-max 30 --y-cut 30
+# Split year form full fit
+text2workspace.py -P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel  --PO verbose --PO 'map=.*/*hcc*:r[1,-500,500]' --PO 'map=.*2016/zcc:z16[1,0,2]' --PO 'map=.*2017/zcc:z17[1,0,2]' --PO 'map=.*2018/zcc:z18[1,0,2]' model_combined.txt
+
+combineTool.py -M MultiDimFit -d model_combined.root --cminDefaultMinimizerStrategy 0 --expectSignal 1 --robustFit 1 --algo grid --points 40 --setParameterRanges z16=0.2,1.8 -m 125 --redefineSignalPOIs=z16 -n .z16scan
+plot1DScan.py higgsCombine.z16scan.MultiDimFit.mH125.root -o plots/LScan_data_Z_unbl16 --y-max 10 --y-cut 10 --POI=z16 
+
+combineTool.py -M MultiDimFit -d model_combined.root --cminDefaultMinimizerStrategy 0 --expectSignal 1 --robustFit 1 --algo grid --points 40 --setParameterRanges z16=0.2,1.8 -m 125 --redefineSignalPOIs=z16 -n .z16scan
+plot1DScan.py higgsCombine.z16scan.MultiDimFit.mH125.root -o plots/LScan_data_Z_unbl16 --y-max 10 --y-cut 10 --POI=z16 
+
+combineTool.py -M MultiDimFit -d model_combined.root --cminDefaultMinimizerStrategy 0 --expectSignal 1 --robustFit 1 --algo grid --points 40 --setParameterRanges z16=0.2,1.8 -m 125 --redefineSignalPOIs=z16 -n .z16scan
+plot1DScan.py higgsCombine.z16scan.MultiDimFit.mH125.root -o plots/LScan_data_Z_unbl16 --y-max 10 --y-cut 10 --POI=z16 
+
+```
+
+### Channel (year) compatibility 
+
+```bash
+combineTool.py -M MultiDimFit -d model_combined.root --algo singles --cminDefaultMinimizerStrategy 0 --setParameters r=1,z=1 --redefineSignalPOIs z -n .cmb
+
+# Split year form full fit
+text2workspace.py -P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel  --PO verbose --PO 'map=.*/*hcc*:r[1,-500,500]' --PO 'map=.*2016/zcc:z16[1,0,2]' --PO 'map=.*2017/zcc:z17[1,0,2]' --PO 'map=.*2018/zcc:z18[1,0,2]' model_combined.txt
+
+combineTool.py -M MultiDimFit -d model_combined.root --algo singles --cminDefaultMinimizerStrategy 0 --setParameters r=1,z16=1,z17=1,z18=1 --redefineSignalPOIs z16 -n .z16
+combineTool.py -M MultiDimFit -d model_combined.root --algo singles --cminDefaultMinimizerStrategy 0 --setParameters r=1,z16=1,z17=1,z18=1 --redefineSignalPOIs z17 -n .z17
+combineTool.py -M MultiDimFit -d model_combined.root --algo singles --cminDefaultMinimizerStrategy 0 --setParameters r=1,z16=1,z17=1,z18=1 --redefineSignalPOIs z18 -n .z18
+```
+
+```bash
+combineTool.py -M PrintFit --json MultiDimFit_ccc.json -P z -i higgsCombine.cmb.MultiDimFit.mH120.root --algo singles
+
+combineTool.py -M PrintFit --json MultiDimFit_ccc.json -P z16 -i higgsCombine.z16.MultiDimFit.mH120.root --algo singles
+combineTool.py -M PrintFit --json MultiDimFit_ccc.json -P z17 -i higgsCombine.z17.MultiDimFit.mH120.root --algo singles
+combineTool.py -M PrintFit --json MultiDimFit_ccc.json -P z18 -i higgsCombine.z18.MultiDimFit.mH120.root --algo singles
+
+python ../plotCCC.py -i MultiDimFit_ccc.json -o plots/ccc_corr
+```
+
+```bash
+bash build.sh
+combine -M ChannelCompatibilityCheck -d model_combined.root --setParameters z=1 --redefineSignalPOIs=z  -g 2016 -g 2017 -g 2018
 ```

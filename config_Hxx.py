@@ -1,32 +1,41 @@
 import numpy as np
 
 # Define Bins
-ptbins = np.array([450, 500, 550, 600, 675, 800, 1200])
-npt = len(ptbins) - 1
-msdbins = np.linspace(40, 201, 24)
+def get_bins(year="2017"):
+    if year == "2017":
+        ptbins = np.array([475, 500, 550, 600, 675, 800, 1200])
+    else:
+        ptbins = np.array([450, 500, 550, 600, 675, 800, 1200])
+    msdbins = np.linspace(40, 201, 24)
 
-# Define pt/msd/rho grids
-ptpts, msdpts = np.meshgrid(ptbins[:-1] + 0.3 * np.diff(ptbins),
-                            msdbins[:-1] + 0.5 * np.diff(msdbins),
-                            indexing='ij')
-rhopts = 2*np.log(msdpts/ptpts)
-ptscaled = (ptpts - 450.) / (1200. - 450.)
-rhoscaled = (rhopts - (-6)) / ((-2.1) - (-6))
-validbins = (rhoscaled >= 0) & (rhoscaled <= 1)
-rhoscaled[~validbins] = 1  # we will mask these out later
+    npt = len(ptbins) - 1
 
-# Define fine bins for smooth TF plots
-fptbins = np.arange(450, 1202, 2)
-fmsdbins = np.arange(40, 201.5, .5)
+    # Define pt/msd/rho grids
+    ptpts, msdpts = np.meshgrid(ptbins[:-1] + 0.3 * np.diff(ptbins),
+                                msdbins[:-1] + 0.5 * np.diff(msdbins),
+                                indexing='ij')
+    rhopts = 2*np.log(msdpts/ptpts)
+    ptscaled = (ptpts - ptbins[0]) / (ptbins[-1] - ptbins[0])
+    rhoscaled = (rhopts - (-6)) / ((-2.1) - (-6))
+    validbins = (rhoscaled >= 0) & (rhoscaled <= 1)
+    rhoscaled[~validbins] = 1  # we will mask these out later
 
-fptpts, fmsdpts = np.meshgrid(fptbins[:-1] + 0.3 * np.diff(fptbins),
-                              fmsdbins[:-1] + 0.5 * np.diff(fmsdbins),
-                              indexing='ij')
-frhopts = 2*np.log(fmsdpts/fptpts)
-fptscaled = (fptpts - 450.) / (1200. - 450.)
-frhoscaled = (frhopts - (-6)) / ((-2.1) - (-6))
-fvalidbins = (frhoscaled >= 0) & (frhoscaled <= 1)
-frhoscaled[~fvalidbins] = 1  # we will mask these out later
+    # Define fine bins for smooth TF plots
+    fptbins = np.arange(ptbins[0], ptbins[0]+2, 2)
+    fmsdbins = np.arange(40, 201.5, .5)
+
+    fptpts, fmsdpts = np.meshgrid(fptbins[:-1] + 0.3 * np.diff(fptbins),
+                                fmsdbins[:-1] + 0.5 * np.diff(fmsdbins),
+                                indexing='ij')
+    frhopts = 2*np.log(fmsdpts/fptpts)
+    fptscaled = (fptpts - ptbins[0]) / (ptbins[-1] - ptbins[0])
+    frhoscaled = (frhopts - (-6)) / ((-2.1) - (-6))
+    fvalidbins = (frhoscaled >= 0) & (frhoscaled <= 1)
+    frhoscaled[~fvalidbins] = 1  # we will mask these out later
+
+    return msdbins, ptbins, ptscaled, rhoscaled, validbins
+
+msdbins, ptbins, ptscaled, rhoscaled, validbins = get_bins(year="2016")
 
 
 def TF_params(xparlist, xparnames=None, nrho=None, npt=None):
