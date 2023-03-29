@@ -92,25 +92,51 @@ def TF_params(xparlist, xparnames=None, nrho=None, npt=None):
 def ddxSF(pbin, flav, year=2017):
     # ptbins = np.array([450, 500, 550, 600, 675, 800, 1200])
     _SFdict = {
+        # 2016: {
+        #     # 'cc': {
+        #     #     "SF": [0.77],
+        #     #     "up": [0.15],
+        #     #     "down": [0.15],
+        #     # }
+        #     'cc': {
+        #         "SF": [1.09],
+        #         "up": [0.1],
+        #         "down": [0.1],
+        #     }
+        # },
+        # 2017: {
+        #     'cc': {
+        #         "SF": [1.24],
+        #         "up": [0.2],
+        #         "down": [0.2],
+        #     }
+        # },
+        # 2018: {
+        #     'cc': {
+        #         "SF": [0.94],
+        #         "up": [0.15],
+        #         "down": [0.15],
+        #     }
+        # },
         2016: {
             'cc': {
-                "SF": [0.77],
-                "up": [0.15],
-                "down": [0.15],
+                "SF": [1.15],
+                "up": [0.25],
+                "down": [0.25],
             }
         },
         2017: {
             'cc': {
-                "SF": [1.24],
-                "up": [0.2],
-                "down": [0.2],
+                "SF": [0.85],
+                "up": [0.16],
+                "down": [0.16],
             }
         },
         2018: {
             'cc': {
-                "SF": [0.94],
-                "up": [0.15],
-                "down": [0.15],
+                "SF": [0.74],
+                "up": [0.2],
+                "down": [0.2],
             }
         },
     }
@@ -118,5 +144,42 @@ def ddxSF(pbin, flav, year=2017):
         raise ValueError("``flav`` has be one of ['bb', 'cc', 'qq'].")
     if pbin in [0, 1, 2, 3, 4, 5]:
         return _SFdict[year][flav]['SF'][0], _SFdict[year][flav]['up'][0], _SFdict[year][flav]['down'][0]
+    else:
+        raise RuntimeError()
+
+
+def ddxSFUL(pbin, flav, year=2017):
+    # ptbins = np.array([450, 500, 550, 600, 675, 800, 1200])
+    _SFdict = {
+        2016: {
+            'cc': {
+                "SF": [1., 0.97, 0.624],
+                "up": [0.15, 0.12, 0.4],
+                "down": [0.17, 0.16, 0.25],
+            }
+        },
+        2017: {
+            'cc': {
+                "SF": [1.18, 1.04, 1.18],
+                "up": [0.17, 0.13, 0.18],
+                "down": [0.17, 0.13, 0.18],
+            }
+        },
+        2018: {
+            'cc': {
+                "SF": [0.99, 0.98, 0.92],
+                "up": [0.12, 0.14, 0.23],
+                "down": [0.12, 0.14, 0.23],
+            }
+        },
+    }
+    if flav not in ['bb', 'cc', 'qq']:
+        raise ValueError("``flav`` has be one of ['bb', 'cc', 'qq'].")
+    if pbin in [0, 1, 2]:
+        return _SFdict[year][flav]['SF'][0], _SFdict[year][flav]['up'][0], _SFdict[year][flav]['down'][0]
+    elif pbin in [3, 4]:
+        return _SFdict[year][flav]['SF'][1], _SFdict[year][flav]['up'][1], _SFdict[year][flav]['down'][1]
+    elif pbin in [5]:
+        return _SFdict[year][flav]['SF'][2], _SFdict[year][flav]['up'][2], _SFdict[year][flav]['down'][2]
     else:
         raise RuntimeError()

@@ -13,38 +13,66 @@ from util import make_dirs
 rl.util.install_roofit_helpers()
 
 SF = {
+    # "2016": {
+    #     'V_SF': 0.875,
+    #     'V_SF_ERR': 0.017,
+    #     'W_SF': 0.605,
+    #     'W_SF_ERR': 0.088,
+    #     'shift_SF': -1.245,
+    #     'shift_SF_ERR': 0.21,
+    #     'smear_SF': 1.02415,
+    #     'smear_SF_ERR': 0.0174,
+    # },
+    # "2017": {
+    #     # Default
+    #     'V_SF': 0.881,
+    #     'V_SF_ERR': 0.022,
+    #     'W_SF': 0.663,
+    #     'W_SF_ERR': 0.091,
+    #     'shift_SF': -1.425,
+    #     'shift_SF_ERR': 0.21,
+    #     'smear_SF': 1.01605,
+    #     'smear_SF_ERR': 0.0131
+    # },
+    # "2018": {
+    #     'V_SF': 0.896,
+    #     'V_SF_ERR': 0.013,
+    #     'W_SF': 0.714,
+    #     'W_SF_ERR': 0.079,
+    #     'shift_SF': -0.304,
+    #     'shift_SF_ERR': 0.15,
+    #     'smear_SF': 1.05,
+    #     'smear_SF_ERR': 0.00235,
+    # },
     "2016": {
-        'V_SF': 0.875,
-        'V_SF_ERR': 0.017,
-        'W_SF': 0.605,
-        'W_SF_ERR': 0.088,
-        # 'W_SF': 0.605,
-        # 'W_SF_ERR': 0.01,
-        'shift_SF': -1.245,
-        'shift_SF_ERR': 0.21,
-        'smear_SF': 1.02415,
-        'smear_SF_ERR': 0.0174,
+        'V_SF': 0.887,
+        'V_SF_ERR': 0.018,
+        'W_SF': 0.618,
+        'W_SF_ERR': 0.093,
+        'shift_SF': -1.166,
+        'shift_SF_ERR': 0.22,
+        'smear_SF': 1.0205,
+        'smear_SF_ERR': 0.0171
     },
     "2017": {
-        # Default
-        'V_SF': 0.881,
-        'V_SF_ERR': 0.022,
-        'W_SF': 0.663,
+        'V_SF': 0.897,
+        'V_SF_ERR': 0.024,
+        'W_SF': 0.641,
         'W_SF_ERR': 0.091,
-        'shift_SF': -1.425,
-        'shift_SF_ERR': 0.21,
-        'smear_SF': 1.01605,
-        'smear_SF_ERR': 0.0131
+        'shift_SF': -1.188,
+        'shift_SF_ERR': 0.234,
+        'smear_SF': 1.01785,
+        'smear_SF_ERR': 0.01555
     },
     "2018": {
-        'V_SF': 0.896,
-        'V_SF_ERR': 0.013,
-        'W_SF': 0.714,
-        'W_SF_ERR': 0.079,
-        'shift_SF': -0.304,
-        'shift_SF_ERR': 0.15,
-        'smear_SF': 1.05,
-        'smear_SF_ERR': 0.00235,
+        'V_SF': 0.92,
+        'V_SF_ERR': 0.015,
+        'W_SF': 0.722,
+        'W_SF_ERR': 0.08,
+        'shift_SF': -0.12,
+        'shift_SF_ERR': 0.208,
+        'smear_SF': 1.09,
+        'smear_SF_ERR': 0.0308
     },
 }
 
@@ -107,7 +135,7 @@ def shape_to_num(f, region, sName, ptbin, syst, mask, muon=False, bound=0.5):
         return None
     else:
         if _one_side is not None:
-            _up_rate = np.sum(_one_side[0] * mask)            
+            _up_rate = np.sum(_one_side[0] * mask)
             _diff = np.abs(_up_rate - _nom_rate)
             magnitude = _diff / _nom_rate
         elif _down is not None and _up is not None:
@@ -152,6 +180,10 @@ def get_templ(f, region, sample, ptbin, syst=None, muon=False, nowarn=False):
     h_vals = f[hist_name].values
     h_edges = f[hist_name].edges
     h_variances = f[hist_name].variances
+    # if len(h_edges) - 3 == len(h_vals): # uproot janky - super unsafe
+    #     h_vals = f[hist_name].allvalues
+    #     h_variances = f[hist_name].allvariances
+    
     if np.any(h_vals < 0):
         print("Sample {}, {}, {}, {}, has {} negative bins. They will be set to 0.".format(
             sample, region, ptbin, syst, np.sum(h_vals < 0)))
@@ -239,7 +271,7 @@ def dummy_rhalphabet(pseudo,
     tqqnormSF = rl.IndependentParameter('tqqnormSF_{}'.format(year), 1., 0, 10)
     # Systematics
     sys_shape_dict = {}
-    if opts.fast in [0]:
+    if opts.fast in [0, 4]:
         for sys in sys_types:
             sys_types[sys] = 'lnN'
     elif opts.fast in [1, 2, 3]:
@@ -286,6 +318,7 @@ def dummy_rhalphabet(pseudo,
     # Independent terms
     sys_scaleW = rl.NuisanceParameter('CMS_gghcc_scaleW_{}'.format(year), 'shape')
     sys_scaleZ = rl.NuisanceParameter('CMS_gghcc_scaleZ_{}'.format(year), 'shape')
+    sys_scaleHbb = rl.NuisanceParameter('CMS_gghcc_scaleHbb_{}'.format(year), 'lnN')
     sys_scale_indept = {}
     for i in range(6):
         sys_scale_indept['sys_scale'+str(i)] = rl.NuisanceParameter('CMS_gghcc_scale_PT{}_{}'.format(i, year), 'shape')
@@ -309,8 +342,6 @@ def dummy_rhalphabet(pseudo,
     # Year setup
     if opts.templates is not None:
         print("Custom templates:", opts.templates)
-        model_name = "Nano17Model"
-        #f = uproot.open('hxx/hist_1DZcc_pt_scalesmear.root')
         f = uproot.open(opts.templates)
         if muonCR:
             f_mu = uproot.open(opts.mutemplates)
@@ -410,13 +441,15 @@ def dummy_rhalphabet(pseudo,
         _names = [par.name for par in tf_MCtempl.parameters.flatten()]
         np.save('{}/MCTF'.format(model_name), _values)
         print('ptdeg', degsMC[0], 'rhodeg', degsMC[1])
-        plotMCTF(*TF_smooth_plot(*TF_params(_values, _names)),
-                 MC=True,
-                 raw=True,
-                 ptdeg=degsMC[0],
-                 rhodeg=degsMC[1],
-                 year=args.year,
-                 out='{}/plots/TF_MC_only'.format(model_name))
+        fig_mctf = plotMCTF(*TF_smooth_plot(*TF_params(_values, _names)),
+                            MC=True,
+                            raw=True,
+                            ptdeg=degsMC[0],
+                            rhodeg=degsMC[1],
+                            year=args.year)
+        _plot_name = '{}/plots/TF_MC_only_{}'.format(model_name, args.year)
+        fig_mctf.savefig(_plot_name+".png", dpi=300, transparent=True, bbox_inches="tight")
+        fig_mctf.savefig(_plot_name+".pdf", dpi=300, transparent=True, bbox_inches="tight")
 
         param_names = [p.name for p in tf_MCtempl.parameters.reshape(-1)]
         decoVector = rl.DecorrelatedNuisanceVector.fromRooFitResult(
@@ -473,7 +506,7 @@ def dummy_rhalphabet(pseudo,
 
             from functools import partial
             # badtemp_ma = partial(badtemp, mask=mask)
-            
+
             def badtemp_ma(hvalues, eps=0.0000001, mask=None):
                 # Need minimum size & more than 1 non-zero bins
                 tot = np.sum(hvalues[mask])
@@ -512,9 +545,9 @@ def dummy_rhalphabet(pseudo,
                         stype = rl.Sample.BACKGROUND
 
                 MORPHNOMINAL = True
-                def smorph(templ, sName):      
+                def smorph(templ, sName):
                     if templ is None:
-                        return None                  
+                        return None
                     if MORPHNOMINAL and sName not in ['qcd', 'zll', 'wln']:
                         return MorphHistW2(templ).get(shift=SF[year]['shift_SF']/smass('wcq') * smass(sName),
                                                       smear=SF[year]['smear_SF']
@@ -522,7 +555,7 @@ def dummy_rhalphabet(pseudo,
                     else:
                         return templ
                 templ = smorph(templ, sName)
-                    
+
                 sample = rl.TemplateSample(ch.name + '_' + sName, stype, templ)
 
                 # Systematics
@@ -544,7 +577,7 @@ def dummy_rhalphabet(pseudo,
                     sys_names = [
                         'JES', 'JER', 'UES', 'jet_trigger', 'btagEffStat', 'btagWeight', 'pileup_weight',
                         'Z_d2kappa_EW', 'Z_d3kappa_EW', 'd1kappa_EW', 'd1K_NLO', 'd2K_NLO', 'd3K_NLO',
-                        'L1Prefiring', 
+                        'L1Prefiring',
                         'scalevar_7pt', 'scalevar_3pt',
                     ]
                     for sys_name in sys_names:
@@ -580,7 +613,7 @@ def dummy_rhalphabet(pseudo,
                             if badtemp_ma(_up[0]) or badtemp_ma(_dn[0]):
                                 print("Skipping {} for sample {}, shape would be empty".format(sys_name, sName))
                                 continue
-                            sample.setParamEffect(sys_shape_dict[sys_name], 
+                            sample.setParamEffect(sys_shape_dict[sys_name],
                                 _up[:-1], _dn[:-1])
                     # One sided
                     for sys_name in ['HEM18']:
@@ -590,7 +623,7 @@ def dummy_rhalphabet(pseudo,
                             if _sys_ef is None:
                                 continue
                             sample.setParamEffect(sys_shape_dict[sys_name], _sys_ef)
-                        else:                            
+                        else:
                             _up = get_templ(f,
                                             region,
                                             sName,
@@ -605,14 +638,14 @@ def dummy_rhalphabet(pseudo,
                             sample.setParamEffect(sys_shape_dict[sys_name], _up[:-1])
 
                     if opts.mcstat: # and sName not in ['qcd']:
-                        if opts.fast == 3:
+                        if opts.fast in [3, 4]:
                             if np.sum(sample._nominal) > 100:
                                 sample.autoMCStats(epsilon=1e-4)
                             else:
-                                sample.autoMCStats(lnN=True)    
-                        elif opts.fast in [0, 1, 4]:  # Convert to lnN for faster fitting
+                                sample.autoMCStats(lnN=True)
+                        elif opts.fast in [0, 1]:  # Convert to lnN for faster fitting
                             sample.autoMCStats(lnN=True)
-                        else:
+                        else: # 2
                             sample.autoMCStats(epsilon=1e-4)
 
                     # if sName not in ['tqq', 'stqq']:
@@ -631,16 +664,25 @@ def dummy_rhalphabet(pseudo,
                         #         sys_veff, 1.0 + SF[year]['V_SF_ERR'] / SF[year]['V_SF'])
 
                     if sName in ["zcc", "hcc"]:
-                        _sf, _sfup, _sfdn = ddxSF(ptbin, 'cc')
+                        if opts.flatSF1u3:
+                            print("Flat DDX cc SF: 1 +- 0.3")
+                            _sf, _sfdn = 1., 0.3
+                        elif opts.ULSF:
+                            print("Using UL sfBDT method")
+                            _sf, _sfup, _sfdn = ddxSF(ptbin, 'cc', year=int(year))
+                        else:
+                            _sf, _sfup, _sfdn = ddxSF(ptbin, 'cc', year=int(year))
                         _sf, _sfunc = passfailSF(f, region, sName, ptbin, mask,
                                                  _sf,
                                                  _sfdn)
                         sample.scale(_sf)
                         sample.setParamEffect(sys_ddxeff, _sfunc)
                     if 'bb' in sName:
-                        _sf, _sfunc = passfailSF(f, region, sName, ptbin, mask, 1, 0.3)
+                        _sf, _sfunc = passfailSF(f, region, sName, ptbin, mask, 1, args.bbsf)
                         sample.scale(_sf)
                         sample.setParamEffect(sys_ddxeffbb, _sfunc)
+                    if opts.extrauncbb and "hbb" in sName: # x-check
+                        sample.setParamEffect(sys_scaleHbb, 4)
                     if sName in ["wcq", "wqq"]:
                         _sf, _sfunc = passfailSF(f, region, sName, ptbin, mask,
                                                  SF[year]['W_SF'], SF[year]['W_SF_ERR'])
@@ -659,7 +701,7 @@ def dummy_rhalphabet(pseudo,
                         print("Skipping sample {}, scale systematic would be empty".format(sName))
                         continue
                     sample.setParamEffect(sys_scale, deepcopy(_up), deepcopy(_down), scale=1/_extra_scaling)
-                
+
                     # if ptbin == 0:
                     #     sample.setParamEffect(sys_scale0, deepcopy(_up), deepcopy(_down), scale=1/_extra_scaling)\
                     # sample.setParamEffect(sys_scale_indept['sys_scale'+str(ptbin)] , deepcopy(_up), deepcopy(_down), scale=1/_extra_scaling)
@@ -677,6 +719,10 @@ def dummy_rhalphabet(pseudo,
                         continue
                     sample.setParamEffect(sys_smear, _up, _down, scale=1/_extra_scaling)
 
+                if opts.scale3k:
+                    sample.scale(3000/60.)
+                if "hbb" in sName:
+                    sample.scale(opts.scalebb) #default 1
                 ch.addSample(sample)
 
             if not pseudo:
@@ -755,6 +801,8 @@ def dummy_rhalphabet(pseudo,
                 for i in range(msd.nbins)
             ])
             initial_qcd = failCh.getObservation().astype(float)
+            if opts.scale3k:
+                initial_qcd *= 3000/60.
             # was integer, and numpy complained about subtracting float from it
             for sample in failCh:
                 initial_qcd -= sample.getExpectation(nominal=True)
@@ -941,7 +989,7 @@ def dummy_rhalphabet(pseudo,
     import json
     # Serialize data into file:
     json.dump(conf_dict,
-              open("{}/config.json".format(model_name), 'w'),
+              open("{}/config{}.json".format(model_name, year), 'w'),
               sort_keys=True,
               indent=4,
               separators=(',', ': '))
@@ -966,7 +1014,7 @@ if __name__ == '__main__':
                         default='False',
                         choices={True, False},
                         help="If plotting data, redraw from poisson distribution")
-    
+
     parser.add_argument("--basis",
                         type=str,
                         default='Bernstein,Bernstein',
@@ -1031,11 +1079,39 @@ if __name__ == '__main__':
                         choices={True, False},
                         help="Only run H and Z sample with QCD")
 
+    # Cross checks
     parser.add_argument("--selective",
                         type=str2bool,
                         default='False',
                         choices={True, False},
                         help="Include scale systematic")
+    
+    parser.add_argument("--flatSF1u3",
+                        type=str2bool,
+                        default='False',
+                        choices={True, False},
+                        help="Set cc SF on signal to 1+-0.3")
+    
+    parser.add_argument("--bbsf", type=float, default=0.3, help="Set DDCvL SF for bb to 1+-<value>")
+    parser.add_argument("--scalebb", type=float, default=1, help="Set hbb contributions by a factor of <value>")
+    parser.add_argument("--extrauncbb",
+                        type=str2bool,
+                        default='False',
+                        choices={True, False},
+                        help="Add additional uncertainty to hbb")
+
+    parser.add_argument("--ULSF",
+                        type=str2bool,
+                        default='False',
+                        choices={True, False},
+                        help="Use UL sfBDT SFs")
+    
+    parser.add_argument("--scale3k",
+                        type=str2bool,
+                        default='False',
+                        choices={True, False},
+                        help="Scale to 3000 fb-1")
+    # cross checks end
 
     parser.add_argument("--year", type=int, default=2017, help="Year")
 

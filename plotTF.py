@@ -11,6 +11,13 @@ from util import make_dirs
 import rhalphalib as rl
 
 
+def get_fit_val(fitDiag, val, fittype='fit_s', substitute=1.):
+    if val in fitDiag.Get(fittype).floatParsFinal().contentsString().split(','):
+        return fitDiag.Get(fittype).floatParsFinal().find(val).getVal()
+    else:
+        return substitute
+
+
 def prepareTF(
     rl_poly,
     xaxis=(40, 200),
@@ -202,6 +209,9 @@ if __name__ == '__main__':
                         default='fitDiagnostics.root',
                         dest='fit',
                         help="fitDiagnostics file")
+    parser.add_argument("--cfg",
+                        default='config.json',
+                        help="config file with TF params")
     parser.add_argument("-o",
                         "--output-folder",
                         default='plots',
@@ -225,7 +235,7 @@ if __name__ == '__main__':
         args.output_folder = os.path.join(args.dir, args.output_folder)
     make_dirs(args.output_folder)
 
-    configs = json.load(open(os.path.join(args.dir, "config.json")))
+    configs = json.load(open(os.path.join(args.dir, args.cfg)))
     if args.year is None:
         args.year = str(configs['year'])
 
@@ -246,29 +256,33 @@ if __name__ == '__main__':
     ax = singleTF(tf_res, rho=args.rho)
     ax.set_title("Residual (Data/MC) TF", x=0, ha='left', fontsize='small')
     hep.cms.label(ax=ax, loc=2, year=args.year)
-    ax.figure.savefig('{}/TF_data.png'.format(args.output_folder), dpi=300, bbox_inches="tight")
-    ax.figure.savefig('{}/TF_data.pdf'.format(args.output_folder), transparent=True, bbox_inches="tight")
+    ax.figure.savefig('{}/TF_data_{}.png'.format(args.output_folder, args.year), dpi=300, bbox_inches="tight")
+    ax.figure.savefig('{}/TF_data_{}.pdf'.format(args.output_folder, args.year), transparent=True, bbox_inches="tight")
 
-    try:
-        MC_nuis = [round(rf.Get('fit_s').floatParsFinal().find(p).getVal(), 3) for p in par_names if 'tf{}_MCtempl'.format(args.year) in p]
-        _vect = np.load(os.path.join(args.dir, 'decoVector.npy'))
-        _MCTF_nominal = np.load(os.path.join(args.dir, 'MCTF.npy'))
-        _values = _vect.dot(np.array(MC_nuis)) + _MCTF_nominal
-        tf_MC.set_parvalues(_values)
+    # try:
+    MC_nuis = [round(rf.Get('fit_s').floatParsFinal().find(p).getVal(), 3) for p in par_names if 'tf{}_MCtempl'.format(args.year) in p]
+    # _vect = np.load(os.path.join(args.dir, 'decoVector.npy'))
+    _vect = np.load(os.path.join(os.path.realpath(os.path.dirname(args.cfg)), 'decoVector.npy'))
+    # _MCTF_nominal = np.load(os.path.join(args.dir, 'MCTF.npy'))
+    _MCTF_nominal = np.load(os.path.join(os.path.realpath(os.path.dirname(args.cfg)), 'MCTF.npy'))
+    print(MC_nuis)
+    print(_MCTF_nominal)
+    _values = _vect.dot(np.array(MC_nuis)) + _MCTF_nominal
+    tf_MC.set_parvalues(_values)
 
-        ax = singleTF(tf_MC, rho=args.rho)
-        ax.set_title("Tagger Response TF", x=0, ha='left', fontsize='small')
-        hep.cms.label(ax=ax, loc=2, year=args.year)
-        ax.figure.savefig('{}/TF_MC.png'.format(args.output_folder), dpi=300, bbox_inches="tight")
-        ax.figure.savefig('{}/TF_MC.pdf'.format(args.output_folder), transparent=True, bbox_inches="tight")
+    ax = singleTF(tf_MC, rho=args.rho)
+    ax.set_title("Tagger Response TF", x=0, ha='left', fontsize='small')
+    hep.cms.label(ax=ax, loc=2, year=args.year)
+    ax.figure.savefig('{}/TF_MC_{}.png'.format(args.output_folder, args.year), dpi=300, bbox_inches="tight")
+    ax.figure.savefig('{}/TF_MC_{}.pdf'.format(args.output_folder, args.year), transparent=True, bbox_inches="tight")
 
-        ax = combinedTF(tf_MC, tf_res, rho=args.rho)
-        ax.set_title("Effective Transfer Factor", x=0, ha='left', fontsize='small')
-        hep.cms.label(ax=ax, loc=2, year=args.year)
-        ax.figure.savefig('{}/TF_eff.png'.format(args.output_folder), dpi=300, bbox_inches="tight")
-        ax.figure.savefig('{}/TF_eff.pdf'.format(args.output_folder), transparent=True, bbox_inches="tight")
-    except:
-        print("Didn't find MCTF")
+    ax = combinedTF(tf_MC, tf_res, rho=args.rho)
+    ax.set_title("Effective Transfer Factor", x=0, ha='left', fontsize='small')
+    hep.cms.label(ax=ax, loc=2, year=args.year)
+    ax.figure.savefig('{}/TF_eff_{}.png'.format(args.output_folder, args.year), dpi=300, bbox_inches="tight")
+    ax.figure.savefig('{}/TF_eff_{}.pdf'.format(args.output_folder, args.year), transparent=True, bbox_inches="tight")
+    # except:
+    #     print("Didn't find MCTF")
 
 
     f = uproot3.open(os.path.join(args.dir, args.fit))
@@ -289,9 +303,9 @@ if __name__ == '__main__':
     in_data_rat = (pass_qcd / (fail_qcd * q))
 
     ax = plotTF_ratio(in_data_rat, mask, region="Prefit", args=args)
-    ax.figure.savefig('{}/{}{}.png'.format(args.output_folder, "TF_ratio_", region),
+    ax.figure.savefig('{}/{}{}_{}.png'.format(args.output_folder, "TF_ratio_", region, args.year),
                       bbox_inches="tight", dpi=300)
-    ax.figure.savefig('{}/{}{}.pdf'.format(args.output_folder, "TF_ratio_", region),
+    ax.figure.savefig('{}/{}{}_{}.pdf'.format(args.output_folder, "TF_ratio_", region, args.year),
                       bbox_inches="tight", transparent=True)
 
     region = 'postfit'
@@ -312,7 +326,7 @@ if __name__ == '__main__':
     in_data_rat = (pass_qcd / (fail_qcd * q))
 
     ax = plotTF_ratio(in_data_rat, mask, region="Postfit", args=args)
-    ax.figure.savefig('{}/{}{}.png'.format(args.output_folder, "TF_ratio_", region),
+    ax.figure.savefig('{}/{}{}_{}.png'.format(args.output_folder, "TF_ratio_", region, args.year),
                       bbox_inches="tight", dpi=300)
-    ax.figure.savefig('{}/{}{}.pdf'.format(args.output_folder, "TF_ratio_", region),
+    ax.figure.savefig('{}/{}{}_{}.pdf'.format(args.output_folder, "TF_ratio_", region, args.year),
                       bbox_inches="tight", transparent=True)

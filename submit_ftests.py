@@ -1,7 +1,6 @@
 # from distutils import command
 import os
 import subprocess
-from multiprocessing import Process
 import argparse
 import time
 
@@ -55,19 +54,23 @@ if __name__ == '__main__':
             for rho in range(0, rng_rho + 1):
                 if args.mc:
                     cmd = (
-                        "python new_Hxx.py --MC --year {year} --templates temps/templates_unblind{yearshort}_CC.root -o {dname}{p}{r} --degs {p},{r} "
-                        " --justZ True --muCR False --MCTF False --muCR False --systs False --scale False --smear False --unblind "
+                        "python new_Hxx.py --MC --year {year} --templates temps/templates_preapproval{yearshort}_CC.root -o {dname}{p}{r} --degs {p},{r} "
+                        " --just Z --muCR False --MCTF False --muCR False --systs False --scale False --smear False --unblind "
                         .format(year=args.year, yearshort=args.year[-2:], dname=args.d, p=str(pt), r=str(rho))
                         + basis
                     ) 
                 else:
                     cmd = (
-                        "python new_Hxx.py --data --year {year} --templates temps/templates_unblind{yearshort}_CC.root -o {dname}{p}{r} --degs {p},{r} "
-                        "--mutemplates temps/templatesmuCR_unblind{yearshort}_CC.root  --muCR True --degsMC 0,2 "
+                        "python new_Hxx.py --data --year {year} --templates temps/templates_preapproval{yearshort}_CC.root -o {dname}{p}{r} --degs {p},{r} "
+                        "--mutemplates temps/templatesmuCR_preapproval{yearshort}_CC.root  --muCR True "
                         .format(year=args.year, yearshort=args.year[-2:], dname=args.d, p=str(pt), r=str(rho))
                         + (" --unblind " if not args.blind else "")
                         + basis
                     )
+                    if args.year in ["2016", "2018"]:
+                        cmd += " --degsMC 0,2 "
+                    else:
+                        cmd += " --degsMC 1,2 "
                 commands.append(cmd)
 
     if args.build:
