@@ -45,8 +45,8 @@ def base_plot(TF, fptpts, fmsdpts, frhopts, ax=None, rho=False):
     coff = 0.3
     zmin, zmax = np.floor(10 * np.min(TF)) / 10, np.ceil(10 * np.max(TF)) / 10
     zmin, zmax = zmin + 0.001, zmax - 0.001
-    clim = np.round(np.min([abs(zmin - 1), abs(zmax - 1)]), 1)
-    clim = np.clip(clim, 0.2, 0.4)
+    clim = np.round(np.mean([abs(zmin - 1), abs(zmax - 1)]), 1)
+    clim = np.clip(clim, 0.2, 0.5)
     levels = np.linspace(1 - clim, 1 + clim, 500)
     
     if np.min(TF) < 1 - clim and np.max(TF) > 1 + clim:
@@ -65,6 +65,9 @@ def base_plot(TF, fptpts, fmsdpts, frhopts, ax=None, rho=False):
         c_extend = 'max'
     else:
         c_extend = 'neither'
+        
+    print "X", np.min(TF), np.max(TF)
+    print "lims:", zmin, zmax, clim, _extend, c_extend
     
     pmesh = plt.contourf(frhopts if rho else fmsdpts, fptpts, TF, cmap='RdBu_r', levels=levels, extend=_extend, corner_mask=False)
     cax = hep.make_square_add_cbar(ax, pad=0.2, size=0.5)
@@ -255,7 +258,7 @@ if __name__ == '__main__':
 
     ax = singleTF(tf_res, rho=args.rho)
     ax.set_title("Residual (Data/MC) TF", x=0, ha='left', fontsize='small')
-    hep.cms.label(ax=ax, loc=2, year=args.year)
+    hep.cms.label(ax=ax, loc=2, year=args.year, data=not args.isMC)
     ax.figure.savefig('{}/TF_data_{}.png'.format(args.output_folder, args.year), dpi=300, bbox_inches="tight")
     ax.figure.savefig('{}/TF_data_{}.pdf'.format(args.output_folder, args.year), transparent=True, bbox_inches="tight")
 
@@ -272,13 +275,13 @@ if __name__ == '__main__':
 
     ax = singleTF(tf_MC, rho=args.rho)
     ax.set_title("Tagger Response TF", x=0, ha='left', fontsize='small')
-    hep.cms.label(ax=ax, loc=2, year=args.year)
+    hep.cms.label(ax=ax, loc=2, year=args.year, data=not args.isMC)
     ax.figure.savefig('{}/TF_MC_{}.png'.format(args.output_folder, args.year), dpi=300, bbox_inches="tight")
     ax.figure.savefig('{}/TF_MC_{}.pdf'.format(args.output_folder, args.year), transparent=True, bbox_inches="tight")
 
     ax = combinedTF(tf_MC, tf_res, rho=args.rho)
     ax.set_title("Effective Transfer Factor", x=0, ha='left', fontsize='small')
-    hep.cms.label(ax=ax, loc=2, year=args.year)
+    hep.cms.label(ax=ax, loc=2, year=args.year, data=not args.isMC)
     ax.figure.savefig('{}/TF_eff_{}.png'.format(args.output_folder, args.year), dpi=300, bbox_inches="tight")
     ax.figure.savefig('{}/TF_eff_{}.pdf'.format(args.output_folder, args.year), transparent=True, bbox_inches="tight")
     # except:

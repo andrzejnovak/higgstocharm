@@ -52,7 +52,7 @@ def lite_plot(
         scaleH=None,
         stack_style=0,
         style_set=style_set_A,
-        prelim=False,
+        prelim=True,
         format='png',
         fitDiag=None,  # Add signal strength labels
         bkgUnc=None,  # External bkg uncertainty

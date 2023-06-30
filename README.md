@@ -242,7 +242,7 @@ combineTool.py -M MultiDimFit -d model_combined.root --algo singles --cminDefaul
 # Split year form full fit
 text2workspace.py -P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel  --PO verbose --PO 'map=.*/zcc:z[1,0,2]' --PO 'map=.*2016/*hcc*:r16[1,-200,300]' --PO 'map=.*2017/*hcc*:r17[1,-200,200]' --PO 'map=.*2018/*hcc*:r18[1,-200,200]' model_combined.txt
 
-combineTool.py -M MultiDimFit -d model_combined.root --algo singles --cminDefaultMinimizerStrategy 0 --setParameters z=1,r16=1,r17=1,r18=1 --redefineSignalPOIs r16 -n .r16 --freezeParameters z 
+combineTool.py -M MultiDimFit -d model_combined.root --algo singles --cminDefaultMinimizerStrategy 0 --setParameters z=1,r16=1,r17=1,r18=1 --redefineSignalPOIs r16 -n .r16 --freezeParameters z    
 combineTool.py -M MultiDimFit -d model_combined.root --algo singles --cminDefaultMinimizerStrategy 0 --setParameters z=1,r16=1,r17=1,r18=1 --redefineSignalPOIs r17 -n .r17 --freezeParameters z 
 combineTool.py -M MultiDimFit -d model_combined.root --algo singles --cminDefaultMinimizerStrategy 0 --setParameters z=1,r16=1,r17=1,r18=1 --redefineSignalPOIs r18 -n .r18 --freezeParameters z 
 
@@ -275,6 +275,33 @@ combineTool.py -M AsymptoticLimits -m 125 -d model_combined.root --freezeParamet
 combineTool.py -M AsymptoticLimits -m 125 -d model_combined.root --freezeParameters z,r16,r17 --setParameters z=1,r16=1,r17=1,r18=1 --redefineSignalPOIs r18 -n .r18 &
 ```
 
+### Unblind Z
+
+```bash
+bash build.sh
+combine -M Significance model_combined.root --setParameters r=1,z=1 --redefineSignalPOIs z 
+
+text2workspace.py -P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel  --PO verbose --PO 'map=.*/*hcc*:r[1,-500,500]' --PO 'map=.*2016/zcc:z16[1,0,3]' --PO 'map=.*2017/zcc:z17[1,0,3]' --PO 'map=.*2018/zcc:z18[1,0,3]'  model_combined.txt
+
+combine -M Significance model_combined.root --setParameters r=1,z16=1,z17=1,z18=1 --freezeParameters z17,z18 --redefineSignalPOIs z16 -n .z16 &
+combine -M Significance model_combined.root --setParameters r=1,z16=1,z17=1,z18=1 --freezeParameters z16,z18 --redefineSignalPOIs z17 -n .z17 &
+combine -M Significance model_combined.root --setParameters r=1,z16=1,z17=1,z18=1 --freezeParameters z16,z17 --redefineSignalPOIs z18 -n .z18 &
+```
+
+### ToysF Z
+
+```bash
+bash build.sh
+combine -M Significance model_combined.root --setParameters r=1,z=1 --redefineSignalPOIs z -t -1 --toysFrequentist
+
+text2workspace.py -P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel  --PO verbose --PO 'map=.*/*hcc*:r[1,-500,500]' --PO 'map=.*2016/zcc:z16[1,0,3]' --PO 'map=.*2017/zcc:z17[1,0,3]' --PO 'map=.*2018/zcc:z18[1,0,3]'  model_combined.txt
+
+combine -M Significance model_combined.root --setParameters r=1,z16=1,z17=1,z18=1 --freezeParameters z17,z18 --redefineSignalPOIs z16 -t -1 --toysFrequentist -n .z16 &
+combine -M Significance model_combined.root --setParameters r=1,z16=1,z17=1,z18=1 --freezeParameters z16,z18 --redefineSignalPOIs z17 -t -1 --toysFrequentist -n .z17 &
+combine -M Significance model_combined.root --setParameters r=1,z16=1,z17=1,z18=1 --freezeParameters z16,z17 --redefineSignalPOIs z18 -t -1 --toysFrequentist -n .z18 &
+```
+
+
 
 ### Uncertainties split stat+syst
 ```
@@ -302,7 +329,7 @@ combine -M MultiDimFit higgsCombine.postfitZ.MultiDimFit.mH120.root -n .Ztotal -
 combine -M MultiDimFit higgsCombine.postfitZ.MultiDimFit.mH120.root -n .Znoexpsyst --algo grid --snapshotName MultiDimFit --setParameterRanges z=0,2 --setParameters r=1,z=1  --redefineSignalPOIs z  --freezeParameters 'rgx{(?!.*_EW$)(?!.*_NLO$)(?!.*_th_scale.pt$).*}' &
 combine -M MultiDimFit higgsCombine.postfitZ.MultiDimFit.mH120.root -n .Zfreezeall --algo grid --snapshotName MultiDimFit --setParameterRanges z=0,2 --setParameters r=1,z=1  --redefineSignalPOIs z  --freezeParameters allConstrainedNuisances &
 ### Replace X year
-plot1DScan.py higgsCombine.Ztotal.MultiDimFit.mH120.root --POI z --main-label "Total Uncert." --others higgsCombine.Znoexpsyst.MultiDimFit.mH120.root:"Theory Uncert.":4 higgsCombine.Zfreezeall.MultiDimFit.mH120.root:"Statistical Only":2 --output plots/breakdown_Z_2017 --y-max 22 --y-cut 10 --breakdown "exp,thy,stat"
+plot1DScan.py higgsCombine.Ztotal.MultiDimFit.mH120.root --POI z --main-label "Total Uncert." --others higgsCombine.Znoexpsyst.MultiDimFit.mH120.root:"Theory Uncert.":4 higgsCombine.Zfreezeall.MultiDimFit.mH120.root:"Statistical Only":2  --y-max 22 --y-cut 10 --breakdown "syst,theo,stat" --logo-sub Preliminary --translate ../breakdown.json --output plots/breakdown_Z_201X
 ```
 Higgs 2016 - shifted range
 ```
@@ -312,7 +339,7 @@ combine -M MultiDimFit higgsCombinepostfit.MultiDimFit.mH120.root -n total --alg
 combine -M MultiDimFit higgsCombinepostfit.MultiDimFit.mH120.root -n noexpsyst --algo grid --snapshotName MultiDimFit --setParameterRanges r=-100,300 --setParameters r=1,z=1 --freezeParameters 'rgx{(?!.*_EW$)(?!.*_NLO$)(?!.*_th_scale.pt$)(?!z$).*}' &
 combine -M MultiDimFit higgsCombinepostfit.MultiDimFit.mH120.root -n freezeall --algo grid --snapshotName MultiDimFit --setParameterRanges r=-100,300 --setParameters r=1,z=1  --freezeParameters=allConstrainedNuisances,z &
 ### 
-plot1DScan.py higgsCombinetotal.MultiDimFit.mH120.root --POI r --main-label "Total Uncert." --others higgsCombinenoexpsyst.MultiDimFit.mH120.root:"Theory Uncert.":4 higgsCombinefreezeall.MultiDimFit.mH120.root:"Statistical Only":2 --output plots/breakdown_H_2016 --y-max 22 --y-cut 10 --breakdown "exp,thy,stat"
+plot1DScan.py higgsCombinetotal.MultiDimFit.mH120.root --POI r --main-label "Total Uncert." --others higgsCombinenoexpsyst.MultiDimFit.mH120.root:"Theory Uncert.":4 higgsCombinefreezeall.MultiDimFit.mH120.root:"Statistical Only":2  --y-max 22 --y-cut 10 --breakdown "syst,theo,stat"  --logo-sub Preliminary --translate ../breakdown.json --output plots/breakdown_H_2016
 ```
 
 Higgs
@@ -323,7 +350,7 @@ combine -M MultiDimFit higgsCombine.postfit.MultiDimFit.mH120.root -n .total --a
 combine -M MultiDimFit higgsCombine.postfit.MultiDimFit.mH120.root -n .noexpsyst --algo grid --snapshotName MultiDimFit --setParameterRanges r=-100,100 --setParameters r=1,z=1 --freezeParameters 'rgx{(?!.*_EW$)(?!.*_NLO$)(?!.*_th_scale.pt$)(?!z$).*}' &
 combine -M MultiDimFit higgsCombine.postfit.MultiDimFit.mH120.root -n .freezeall --algo grid --snapshotName MultiDimFit --setParameterRanges r=-100,100 --setParameters r=1,z=1  --freezeParameters=allConstrainedNuisances,z &
 ### Replace X year
-plot1DScan.py higgsCombine.total.MultiDimFit.mH120.root --POI r --main-label "Total Uncert." --others higgsCombine.noexpsyst.MultiDimFit.mH120.root:"Theory Uncert.":4 higgsCombine.freezeall.MultiDimFit.mH120.root:"Statistical Only":2 --output plots/breakdown_H_201X --y-max 22 --y-cut 10 --breakdown "exp,thy,stat"
+plot1DScan.py higgsCombine.total.MultiDimFit.mH120.root --POI r --main-label "Total Uncert." --others higgsCombine.noexpsyst.MultiDimFit.mH120.root:"Theory Uncert.":4 higgsCombine.freezeall.MultiDimFit.mH120.root:"Statistical Only":2 --y-max 22 --y-cut 10 --breakdown "syst,theo,stat" --logo-sub Preliminary --translate ../breakdown.json --output plots/breakdown_H_201X 
 ```
 
 ### Running GoFs
