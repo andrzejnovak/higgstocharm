@@ -10,7 +10,7 @@ echo "Using algo:" $ALGO
 if [[ "$1" -eq 0 ]]; then
     combine -M FitDiagnostics -d model_combined.root --cminDefaultMinimizerStrategy 0 --robustFit=1  --setParameters z=1,r=1 --freezeParameters z --redefineSignalPOIs r -n "" --saveShapes --saveWithUncertainties #-t -1 --toysFrequentist --robustHesse 1
 elif [[ "$1" -eq 1 ]]; then
-    combine -M GoodnessOfFit model_combined.root --algo $ALGO  --expectSignal 1 --redefineSignalPOIs r --freezeParameters z -n DataGoF$ALGO
+    combine -M GoodnessOfFit model_combined.root --algo $ALGO  --expectSignal 1 --redefineSignalPOIs r --freezeParameters rx -n DataGoF$ALGO
 elif [[ "$1" -eq 2 ]]; then
     combineTool.py -M GoodnessOfFit model_combined.root --algo $ALGO  --expectSignal 1 -t 5 --toysFrequentist  --redefineSignalPOIs r --freezeParameters z -n GoFs$ALGO --job-mode condor --sub-opts='+JobFlavour = "workday"' --task-name ggHcc$ALGO -s 1:"$3":1    
 elif [[ "$1" -eq 3 ]]; then 

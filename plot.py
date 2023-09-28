@@ -52,7 +52,8 @@ def lite_plot(
         scaleH=None,
         stack_style=0,
         style_set=style_set_A,
-        prelim=True,
+        prelim=False,
+        private=False,
         format='png',
         fitDiag=None,  # Add signal strength labels
         bkgUnc=None,  # External bkg uncertainty
@@ -453,8 +454,10 @@ def lite_plot(
 
     _data = ((not pseudo) | toys)
     _label = "" if _data else "Simulation"
-    if prelim:
+    if args.prelim:
         _label += " Preliminary"
+    elif args.private:
+        _label += " Private Work"
     else:
         if stack_style not in [2]:  # not paper
             _label += " Supplementary"
@@ -605,7 +608,13 @@ def lite_plot(
                 save_name = []
         save_name += [fit_name, name]
         save_name = "_".join(save_name)
-        prel_name = "prelim" if prelim else "paper"
+        if args.prelim:
+            prel_name = "prelim" 
+        elif args.private:
+            prel_name = "private"
+        else:
+            prel_name = "paper"
+        print(prel_name, private, prelim, paper)
         dir_path = '{}/{}/style{}'.format(args.output_folder, prel_name, str(stack_style))
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
@@ -621,7 +630,8 @@ def lite_plot(
 
 def full_plot(*args, **kwargs):
     mod = 'stack_style' not in kwargs
-    for st_style in [0, 2, 3]:
+    # for st_style in [0, 2, 3]:
+    for st_style in [2]:
         if mod:
             kwargs['stack_style'] = st_style
         lite_plot(*args, **kwargs)
@@ -681,7 +691,17 @@ if __name__ == '__main__':
                         dest='run_all',
                         help="Include split pT bin plots")
     parser.add_argument("--run2", action='store_true', dest='run2', help="Stack all years")
-    parser.add_argument("--paper", action='store_true', dest='paper', help="Stack all years")
+    parser.add_argument("--paper", action='store_true', dest='paper', help="Drop extra CMS labels prelim/private")
+    parser.add_argument("--private",
+                        type=str2bool,
+                        default='True',
+                        choices={True, False},
+                        help="Add private label")
+    parser.add_argument("--prelim",
+                        type=str2bool,
+                        default='False',
+                        choices={True, False},
+                        help="Add Preliminary label")
     parser.add_argument("-o",
                         "--output-folder",
                         default='plots',
@@ -822,6 +842,8 @@ if __name__ == '__main__':
                                     bkgUnc=_bkgunc,
                                     run2=args.run2,
                                     paper=args.paper,
+                                    prelim=args.prelim,
+                                    private=args.private,
                                     scaleH=args.scale,
                                     format=args.format,
                                     year="" if args.run2 else args.year,
@@ -864,6 +886,8 @@ if __name__ == '__main__':
                         year="" if args.run2 else args.year,
                         scaleH=args.scale,
                         run2=args.run2,
+                        prelim=args.prelim,
+                        private=args.private,
                         )
                 # MuonCR if included
                 if any(['muonCR' in s for s in f['shapes_{}'.format(shape_type)].keys()]):
@@ -882,6 +906,8 @@ if __name__ == '__main__':
                                 year="",
                                 scaleH=args.scale,
                                 run2=args.run2,
+                                prelim=args.prelim,
+                                private=args.private,
                                 )
                     else:
                         cat = f['shapes_{}/muonCR{}{};1'.format(shape_type, region, args.year)]
@@ -895,6 +921,8 @@ if __name__ == '__main__':
                             format=args.format,
                             year=args.year,
                             scaleH=args.scale,
+                            prelim=args.prelim,
+                            private=args.private,
                         )
                     print("Plotted muCR", region, shape_type)
                 else:

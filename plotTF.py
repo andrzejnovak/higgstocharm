@@ -225,6 +225,11 @@ if __name__ == '__main__':
                         choices={"2016", "2017", "2018"},
                         type=str,
                         help="year label")
+    parser.add_argument("--label",
+                        default=None,
+                        choices={"Preliminary", "Private Work", "Supplementary"},
+                        type=str,
+                        help="year label")
     parser.add_argument("--MC",
                         action='store_true',
                         dest='isMC',
@@ -258,7 +263,7 @@ if __name__ == '__main__':
 
     ax = singleTF(tf_res, rho=args.rho)
     ax.set_title("Residual (Data/MC) TF", x=0, ha='left', fontsize='small')
-    hep.cms.label(ax=ax, loc=2, year=args.year, data=not args.isMC)
+    hep.cms.label(llabel=args.label, ax=ax, loc=2, year=args.year, data=not args.isMC)
     ax.figure.savefig('{}/TF_data_{}.png'.format(args.output_folder, args.year), dpi=300, bbox_inches="tight")
     ax.figure.savefig('{}/TF_data_{}.pdf'.format(args.output_folder, args.year), transparent=True, bbox_inches="tight")
 
@@ -275,13 +280,13 @@ if __name__ == '__main__':
 
     ax = singleTF(tf_MC, rho=args.rho)
     ax.set_title("Tagger Response TF", x=0, ha='left', fontsize='small')
-    hep.cms.label(ax=ax, loc=2, year=args.year, data=not args.isMC)
+    hep.cms.label(llabel=args.label, ax=ax, loc=2, year=args.year, data=not args.isMC)
     ax.figure.savefig('{}/TF_MC_{}.png'.format(args.output_folder, args.year), dpi=300, bbox_inches="tight")
     ax.figure.savefig('{}/TF_MC_{}.pdf'.format(args.output_folder, args.year), transparent=True, bbox_inches="tight")
 
     ax = combinedTF(tf_MC, tf_res, rho=args.rho)
     ax.set_title("Effective Transfer Factor", x=0, ha='left', fontsize='small')
-    hep.cms.label(ax=ax, loc=2, year=args.year, data=not args.isMC)
+    hep.cms.label(llabel=args.label, ax=ax, loc=2, year=args.year, data=not args.isMC)
     ax.figure.savefig('{}/TF_eff_{}.png'.format(args.output_folder, args.year), dpi=300, bbox_inches="tight")
     ax.figure.savefig('{}/TF_eff_{}.pdf'.format(args.output_folder, args.year), transparent=True, bbox_inches="tight")
     # except:
